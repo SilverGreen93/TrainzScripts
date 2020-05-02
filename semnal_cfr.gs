@@ -1,7 +1,7 @@
 /*
  * Script pentru Semnalele CFR luminoase & mecanice
- * Autor: Mihai Alexandru Vasiliu (c) 2013
- * v2.5 04-09-2013
+ * Autor: Mihai Alexandru Vasiliu (c) 2012-2016
+ * v3.0 16-01-2016
  */
  
 include "Signal.gs"
@@ -79,7 +79,7 @@ class Semnal isclass Signal
 	public define int MARKER_LIMIT = 500; //la cati metri maxim se poate cauta un marker de restrictie sau directie 
 	
 	//Definitiile textelor de afisat
-	public define string T_TITLE = "<p><font color=#FFFFFF size=15>Semnal RO CFR</font><font color=#FFFFFF size=3> v2.5 - 04-SEP-2013</font></p><p><font color=#FFFFFF size=2> Configurarea se face folosind markeri conform tutorialului. Pagina de proprietati de mai jos nu se foloseste decat in scop de backup in cazul in care configurarea cu markeri esueaza.</font></p>";
+	public define string T_TITLE = "<font color=#FFFFFF size=15>RO CFR Signal v3.0 </font><font color=#FFFFFF size=3>16-JAN-2016/font><br><br><font color=#FFFFFF size=2>To configure please use line markers (i.e.: RO mrk)<br>More information at http://vvmm.freeforums.org/</font><br>";
 	public define string T_BGCOLOR = "bgcolor=#B0B0B0";
 	public define string T_BGCOLOR2 = "bgcolor=#D0B040";
 	public define string T_SELECT_DIR = "Indicatorul de directie";
@@ -366,16 +366,16 @@ class Semnal isclass Signal
 		
 		while (mo)
 		{
+			if (cast<Semnal>mo or GSTS.GetDistance() > MARKER_LIMIT)
+			{
+				break;
+			}
 			if (GSTS.GetFacingRelativeToSearchDirection())
 			{
 				if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_dir")))
 				{
 					return Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_dir"));
 				}
-			}
-			if (GSTS.GetDistance() > MARKER_LIMIT)
-			{
-				break;
 			}
 			mo = GSTS.SearchNext();
 		}
@@ -401,16 +401,16 @@ class Semnal isclass Signal
 		
 		while (mo)
 		{
+			if (cast<Semnal>mo or GSTS.GetDistance() > MARKER_LIMIT)
+			{
+				break;
+			}
 			if (GSTS.GetFacingRelativeToSearchDirection())
 			{
 				if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_vr")))
 				{
 					return Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_vr"));
 				}
-			}
-			if (GSTS.GetDistance() > MARKER_LIMIT)
-			{
-				break;
 			}
 			mo = GSTS.SearchNext();
 		}
@@ -2313,16 +2313,16 @@ class Semnal isclass Signal
 							
 							while (mo)
 							{
+								if (cast<Semnal>mo or GSTS.GetDistance() > MARKER_LIMIT)
+								{
+									break;
+								}
 								if (GSTS.GetFacingRelativeToSearchDirection())
 								{
 									if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_st")))
 									{
 										SetFXAttachment(B_LINIE,alblinie);
 									}
-								}
-								if (GSTS.GetDistance() > MARKER_LIMIT)
-								{
-									break;
 								}
 								mo = GSTS.SearchNext();
 							}
@@ -3514,16 +3514,16 @@ class Semnal isclass Signal
 							
 							while (mo)
 							{
+								if (cast<Semnal>mo or GSTS.GetDistance() > MARKER_LIMIT)
+								{
+									break;
+								}
 								if (GSTS.GetFacingRelativeToSearchDirection())
 								{
 									if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_st")))
 									{
 										SetFXAttachment(B_LINIE,alblinie);
 									}
-								}
-								if (GSTS.GetDistance() > MARKER_LIMIT)
-								{
-									break;
 								}
 								mo = GSTS.SearchNext();
 							}
