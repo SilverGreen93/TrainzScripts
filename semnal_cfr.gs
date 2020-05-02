@@ -1,11 +1,11 @@
 /*
  * Script pentru Semnalele CFR luminoase & mecanice
  * Autor: Mihai Alexandru Vasiliu (c) 2012-2016
- * v3.0 16-01-2016
+ * v3.0 20-JAN-2016
  */
  
-include "Signal.gs"
-include "Junction.gs"
+include "signal.gs"
+include "junction.gs"
 
 class SigLib isclass Library
 {
@@ -79,7 +79,7 @@ class Semnal isclass Signal
 	public define int MARKER_LIMIT = 500; //la cati metri maxim se poate cauta un marker de restrictie sau directie 
 	
 	//Definitiile textelor de afisat
-	public define string T_TITLE = "<font color=#FFFFFF size=15>RO CFR Signal v3.0 </font><font color=#FFFFFF size=3>16-JAN-2016/font><br><br><font color=#FFFFFF size=2>To configure please use line markers (i.e.: RO mrk)<br>More information at http://vvmm.freeforums.org/</font><br>";
+	public define string T_TITLE = "<font color=#FFFFFF size=15>RO CFR Signal v3.0 </font><font color=#FFFFFF size=3>19-JAN-2016</font><br><br>To configure please use line markers (i.e.: RO mrk)<br>More information at http://vvmm.freeforums.org/<br>The following section is obsolete and should not be used.";
 	public define string T_BGCOLOR = "bgcolor=#B0B0B0";
 	public define string T_BGCOLOR2 = "bgcolor=#D0B040";
 	public define string T_SELECT_DIR = "Indicatorul de directie";
@@ -193,7 +193,9 @@ class Semnal isclass Signal
 	public Signal active_nextSignal;
 	public string active_nextSignalName;
 	public string thisSignalDisplayName;
-
+	public bool bla_left = true;
+	public Soup config;
+	
 	Semnal[] subscribers=new Semnal[0];
 	
 	//Declaratii de functii ce vor fi apelate in neordine
@@ -2364,6 +2366,18 @@ class Semnal isclass Signal
 		//BLA
 		if (Str.ToInt(ST.GetString("SIGNAL_TMV_LINE_BLOCK")))
 		{
+			if (config.GetNamedTagAsFloat("trackside") < 0)
+			{
+				if (bla_left == true)
+				{
+					SetSignalStateEx(EX_STOP,"Sens de circulatie invers");
+				}
+				else
+				{
+					SetSignalState(AUTOMATIC,"");
+				}
+			}
+		
 			if (GetSignalState()==RED) 
 			{
 				this_aspect=S_ROSU;
@@ -3605,6 +3619,18 @@ class Semnal isclass Signal
 		//BLA
 		if (Str.ToInt(ST.GetString("SIGNAL_DTV_LINE_BLOCK")))
 		{
+			if (config.GetNamedTagAsFloat("trackside") < 0)
+			{
+				if (bla_left == true)
+				{
+					SetSignalStateEx(EX_STOP,"Sens de circulatie invers");
+				}
+				else
+				{
+					SetSignalState(AUTOMATIC,"");
+				}
+			}
+			
 			if (GetSignalState()==RED) 
 			{
 				this_aspect=S_ROSU;
@@ -5166,12 +5192,40 @@ class Semnal isclass Signal
 		}
 	}
 	
+	void ChangeBLAState(Message msg)
+	{
+		if (msg.dst != me)
+			return;
+			
+		if (config.GetNamedTagAsFloat("trackside") < 0)
+		{		
+			if (msg.minor == "Train Approaching")
+			{
+				SetSignalState(AUTOMATIC,"");
+				bla_left=false;
+			}	
+			if (msg.minor == "Train Leaving")
+			{
+				SetSignalStateEx(EX_STOP,"Sens de circulatie invers");
+				bla_left=true;
+			}
+		}	
+		
+		//SetFXNameText("name0",GetSignalStateEx());
+		//SetFXNameText("name1",msg.minor);
+
+		//Update();	
+		//Interface.Log(me.GetName() + " " + msg.minor);	
+	}
+	
+	
 	//Functia ce este apelata la crearea obiectului
 	public void Init(void)
 	{
 		inherited();
 		Asset self=GetAsset();
 		ST=self.GetStringTable();
+		config=self.GetConfigSoup();
 		//Incarca becurile din kuid-table
 		rosu=self.FindAsset("Red");
 		galben=self.FindAsset("Yellow");
@@ -5259,6 +5313,7 @@ class Semnal isclass Signal
 		AddHandler(me,"Junction","Toggled","JunctionChange");	//S-a schimbat orientarea unui macaz
 		AddHandler(me,"Semnal","Subscribe","Subscribe");
 		AddHandler(me,"Semnal","UnSubscribe","UnSubscribe");
+		AddHandler(me,"Signal","","ChangeBLAState");
 		
 	}
 
