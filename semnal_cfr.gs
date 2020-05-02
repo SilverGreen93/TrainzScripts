@@ -1,6 +1,8 @@
 //
 // RO CFR Signals Script
-// v3.0 21.02.2016
+// Version: 3.0
+// Build: 160306
+// Date: 06.03.2016 
 // Author: vvmm (c) 2013-2016
 // Website: http://vvmm.freeforums.org/
 // 
@@ -13,9 +15,11 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-	define int MARKER_LIMIT = 800;
-	define int MACAZ_LIMIT = 1000;
-	define int SEMNAL_LIMIT = 3000;
+	define string BUILD = "v3.0 b160306";
+	
+	define int MARKER_LIMIT = 800; // limita maxima la care se cauta markeri
+	define int MACAZ_LIMIT = 1000; // doar pentru afisarea distantei
+	define int SEMNAL_LIMIT = 3000; // doar pentru afisarea distantei
 
 	// Definitiile becurilor (efectelor din config)
 	define string B_ROSU = "0";
@@ -42,6 +46,7 @@ class Semnal isclass Signal
 	define int S_GAL_GAL_90 = 19;
 	define int S_VER_GAL_90 = 20;
 	define int S_ROSU_AV = 70;
+	define int S_TRIERE = 71; // Folosit numai la mesaje, nu exista in regulamente
 	define int S_ALBASTRU = 90;
 	define int S_ALB = 91;
 	define int S_CHEMARE = 92;
@@ -97,15 +102,15 @@ class Semnal isclass Signal
 	
 	int next_aspect = -1;
 	int next_restrict = -1;
-	int memo_aspect = -1;
-	int memo_restrict = -1;
-	bool active_shunt, active_fault, active_chemare, xxx;
+	int memo_aspect = -2; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
+	int memo_restrict = -2;
+	bool active_shunt, active_fault, active_chemare, xxx, trage_convoi;
 	int direction, restriction, ies_st, linie;
-	bool bla_left = true;
+	bool bla_left;
 	string numeAfisat;
 	
 	// variabile publice
-	public int this_aspect = 0;
+	public int this_aspect = -1;
 	public bool is_iesire, is_intrare, is_bla, is_bla4i, is_prevestitor, is_pitic;
 	public bool is_repetitor, is_manevra, is_avarie, is_triere, is_chemare, is_grup;
 	
@@ -688,7 +693,7 @@ class Semnal isclass Signal
 			if (cast<Semnal>mo)
 			{
 				// sari peste semnalele de manevra care sunt intercalate cu cele de intrare
-				if ((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire))
+				if ((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere))
 					found_manevra = true;
 				else // daca am ajuns la urmatorul semnal nu ne mai intereseaza markere
 					break;
@@ -707,7 +712,7 @@ class Semnal isclass Signal
 				{
 					restriction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_vr-474195");
 					// daca avem semnal de manevra dedicat nu mai afisez manevra
-					if (restriction == R_MANEVRA and found_manevra)
+					if ((restriction == R_MANEVRA and found_manevra) and (is_intrare or is_iesire or is_triere))
 						restriction = 0;
 				}
 				if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsBool("rosig_st-474195", false))
@@ -717,6 +722,7 @@ class Semnal isclass Signal
 			}
 			mo = GSTS.SearchNext();
 		}
+		//SetFXNameText("name1", "ST=" + ies_st);
 	}
 
 	//
@@ -780,10 +786,6 @@ class Semnal isclass Signal
 				{
 					Exception("SIG-RO-CFR> Else clause!");
 				}
-			}
-			if (is_triere)
-			{
-				//TODO: Triere
 			}
 		}
 		else if (signal_type == "DTV")
@@ -877,7 +879,10 @@ class Semnal isclass Signal
 			}
 			if (is_triere)
 			{
-				//TODO: Triere
+				SetFXAttachment(B_ROSU, null);
+				SetFXAttachment(B_GALBEN, null);
+				SetFXAttachment(B_VERDE, null);
+				SetFXAttachment(B_ALB, null);
 			}
 			
 			LightBar(0);
@@ -959,10 +964,6 @@ class Semnal isclass Signal
 				SetFXAttachment("61",null);
 				SetFXAttachment("62",null);
 			}
-			if (is_triere)
-			{
-				//TODO: Triere
-			}
 		}
 		else
 		{
@@ -980,7 +981,7 @@ class Semnal isclass Signal
 		MapObject mo = GSTS.SearchNext();
 		
 		junctionList[0, junctionList.size()] = null;
-		
+		bool isNull = true; // daca de exemplu e manevra inainte de sfarsit de linie (aka macaz iesire) nu vom avea rosu automat
 		
 		while (mo)
 		{
@@ -989,11 +990,22 @@ class Semnal isclass Signal
 				//Interface.Print(GetName() + ": Semnal gasit: " + mo.GetName() + " " + mo.GetId());
 				// sari peste semnalele de manevra care sunt intercalate cu cele de intrare
 				// daca am ajuns la urmatorul semnal nu ne mai intereseaza
-				if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire)))
+				if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
 				{
 					nextSignal = (cast<Semnal>mo).GetId();
 					next_aspect = (cast<Semnal>mo).this_aspect;
+					SetFXNameText("name0",  mo.GetName());
+					isNull = false;
 					break;
+				}
+				else //manevra
+				{
+					if ((cast<Signal>mo).GetSignalState() == RED)
+					{
+						// avem semnal de manevra dupa cel de intrare si acesta e pe "rosu" adica de fapt cel de intrare trebuie sa fie rosu
+						isNull = true;
+						break;
+					}
 				}
 			}
 			if (cast<Junction>mo)
@@ -1002,6 +1014,13 @@ class Semnal isclass Signal
 				junctionList[junctionList.size()] = (cast<Junction>mo).GetId();
 			}
 			mo = GSTS.SearchNext();
+		}
+		
+		if (isNull)
+		{
+			nextSignal = -2; // -1 rezervat pentru initializare de TRAINZ.
+			SetFXNameText("name0",  "-2");
+			next_aspect = -1;
 		}
 		
 		/*Interface.Print(GetName() + ": junctionList: ");
@@ -1037,6 +1056,19 @@ class Semnal isclass Signal
 	
 	
 	//
+	// Get BLA signal state considering bla_left
+	//
+	int GetBLASignalState()
+	{
+		if (config.GetNamedTagAsFloat("trackside") < 0)
+			if (bla_left == true)
+				return 0;
+
+		return GetSignalState();
+	}
+	
+	
+	//
 	// Update DTV Signal State
 	//
 	thread void UpdateDTV()
@@ -1044,7 +1076,7 @@ class Semnal isclass Signal
 		// INTRARE sau IESIRE DTV 2
 		if ((is_intrare or is_iesire) and lights_count == 2)
 		{
-			if (GetSignalState() == RED) 
+			if (GetSignalState() == RED or (next_aspect == -1))  
 			{
 				this_aspect = S_ROSU;
 				if (this_aspect != memo_aspect)
@@ -1125,7 +1157,7 @@ class Semnal isclass Signal
 					SetSpeedLimit(20/3.6);
 				}
 			}
-			else if (GetSignalState() == RED) 
+			else if (GetSignalState() == RED or (next_aspect == -1)) 
 			{
 				this_aspect = S_ROSU;
 				if (this_aspect != memo_aspect)
@@ -1194,7 +1226,7 @@ class Semnal isclass Signal
 				
 				if (has_direction)
 				{
-					//TODO: Why 27 and >1 ?
+					// Lipsa distantei de franare este indicata doar daca urmeaza oprire.
 					if (direction == 27 and this_aspect > 1)
 						direction = 0;
 					LightDirection(direction);
@@ -1332,18 +1364,6 @@ class Semnal isclass Signal
 		// BLA 3i sau 4i
 		if (is_bla or is_bla4i)
 		{
-			if (config.GetNamedTagAsFloat("trackside") < 0)
-			{
-				if (bla_left == true)
-				{
-					SetSignalStateEx(EX_STOP, "Sens de circulatie invers");
-				}
-				else
-				{
-					SetSignalState(AUTOMATIC, "");
-				}
-			}
-			
 			// AVARIE
 			if (active_fault and is_avarie)
 			{
@@ -1356,7 +1376,7 @@ class Semnal isclass Signal
 					SetFXAttachment(B_ROSU_AV,rosu);
 				}
 			}
-			else if (GetSignalState() == RED) 
+			else if (GetBLASignalState() == RED or (next_aspect == -1)) 
 			{
 				this_aspect = S_ROSU;
 				if (this_aspect != memo_aspect)
@@ -1579,11 +1599,11 @@ class Semnal isclass Signal
 		}
 		
 		// MANEVRA
-		if (is_manevra and !(is_intrare or is_iesire))
+		if (is_manevra and !(is_intrare or is_iesire or is_triere))
 		{
 			//Daca exista marker pentru manevra
 			FindMarker();
-			
+
 			if (restriction == S_ALB or active_shunt)
 			{
 				this_aspect=S_ALB;
@@ -1639,7 +1659,144 @@ class Semnal isclass Signal
 
 		if (is_triere)
 		{
-			//TODO: triere
+			//TODO: Markeri Triere?
+			FindMarker();
+			
+			// IMPINGE CONVOIUL SPRE COCOASA
+			if (active_chemare or restriction == S_CHEMARE)
+			{
+				this_aspect=S_CHEMARE;
+				if (this_aspect!=memo_aspect)
+				{
+					memo_aspect=this_aspect;
+					Notify();
+					LightsOff();
+					LightDirection(0);
+						
+					SetFXAttachment(B_ALB, albclipitor);
+					SetSpeedLimit(20/3.6);
+				}
+			} // MANEVRA
+			else if (restriction == S_ALB or active_shunt)
+			{
+				this_aspect=S_ALB;
+				if (this_aspect!=memo_aspect)
+				{
+					memo_aspect=this_aspect;
+					Notify();
+					LightsOff();
+					LightDirection(0);
+					
+					SetFXAttachment(B_ALB, alb);
+					SetSpeedLimit(20/3.6);
+				}
+			} // TRAGE CONVOIUL DE PE COCOASA
+			else if (trage_convoi)
+			{
+				this_aspect=S_ALB;
+				if (this_aspect!=memo_aspect)
+				{
+					memo_aspect=this_aspect;
+					Notify();
+					LightsOff();
+					LightDirection(0);
+					
+					SetFXAttachment(B_ROSU, rosuclipitor);
+					SetSpeedLimit(20/3.6);
+				}
+			}
+			else if (GetSignalState() == RED  or (next_aspect == -1)) 
+			{
+				this_aspect = S_ROSU;
+				if (this_aspect != memo_aspect)
+				{
+					Notify();
+					memo_aspect = S_ROSU;
+					LightsOff();
+					SetFXAttachment(B_ROSU, rosu);
+				}
+			}
+			else
+			{
+				switch (next_aspect)
+				{
+				case S_ROSU:
+					this_aspect = S_GALBEN;
+					break;
+				case S_GALBEN:
+					this_aspect = S_VERDE;
+					break;
+				case S_VERDE:
+					this_aspect = S_VERDE;
+					break;
+				case S_GAL_CL:
+					this_aspect = S_VERDE;
+					break;
+				case S_GAL_DCL:
+					this_aspect = S_VERDE;
+					break;
+				case S_VER_CL:
+					this_aspect = S_VERDE;
+					break;
+				case S_GAL_GAL:
+					this_aspect = S_GAL_CL;
+					break;
+				case S_VER_GAL:
+					this_aspect = S_GAL_CL;
+					break;
+				case S_GAL_GAL_60:
+					this_aspect = S_GAL_DCL;
+					break;
+				case S_VER_GAL_60:
+					this_aspect = S_GAL_DCL;
+					break;
+				case S_GAL_GAL_90:
+					this_aspect = S_VER_CL;
+					break;
+				case S_VER_GAL_90:
+					this_aspect = S_VER_CL;
+					break;
+				case S_ROSU_AV:
+					this_aspect = S_GALBEN;
+					break;
+				case S_ALB:
+					this_aspect = S_VERDE;
+					break;
+				case S_CHEMARE:
+					this_aspect = S_GALBEN;
+					break;
+				default:;
+				}  
+				
+				if (next_aspect >= 100) // Daca urmatorul e TMV
+					this_aspect = S_VERDE;
+				
+				if (this_aspect != memo_aspect)
+				{
+					Notify(); 
+					memo_aspect = this_aspect;
+					LightsOff();
+					switch (this_aspect)
+					{
+					case S_GALBEN:
+						SetFXAttachment(B_GALBEN, galben);
+						break;
+					case S_VERDE:
+						SetFXAttachment(B_VERDE, verde);
+						break;
+					case S_GAL_CL:
+						SetFXAttachment(B_GALBEN, galbenclipitor);
+						break;
+					case S_GAL_DCL:
+						SetFXAttachment(B_GALBEN, galbenclipitor2);
+						break;
+					case S_VER_CL:
+						SetFXAttachment(B_VERDE, verdeclipitor);
+						break;
+					default:;
+					}
+				}
+			}
 		}
 		
 	}
@@ -1681,7 +1838,7 @@ class Semnal isclass Signal
 		// INTRARE si IESIRE 2i
 		if ((is_intrare or is_iesire) and (lights_count == 2))
 		{
-			if (GetSignalState() == RED) 
+			if (GetSignalState() == RED or (next_aspect == -1))
 			{
 				this_aspect = S_ROSU;
 				if (this_aspect != memo_aspect)
@@ -2032,7 +2189,7 @@ class Semnal isclass Signal
 		}
 		
 		// MANEVRA
-		if (is_manevra and !(is_intrare or is_iesire))
+		if (is_manevra and !(is_intrare or is_iesire or is_triere))
 		{
 			//Daca exista marker pentru manevra
 			FindMarker();
@@ -2112,7 +2269,7 @@ class Semnal isclass Signal
 					SetSpeedLimit(20/3.6);
 				}
 			}
-			else if (GetSignalState() == RED) 
+			else if (GetSignalState() == RED or (next_aspect == -1)) 
 			{
 				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
@@ -3313,18 +3470,6 @@ class Semnal isclass Signal
 		// BLA
 		if (is_bla)
 		{
-			if (config.GetNamedTagAsFloat("trackside") < 0)
-			{
-				if (bla_left == true)
-				{
-					SetSignalStateEx(EX_STOP,"Sens de circulatie invers");
-				}
-				else
-				{
-					SetSignalState(AUTOMATIC,"");
-				}
-			}
-			
 			// AVARIE
 			if (active_fault and is_avarie)
 			{
@@ -3339,7 +3484,7 @@ class Semnal isclass Signal
 					SetFXAttachment(B_ROSU_AV,rosu);
 				}
 			}
-			else if (GetSignalState()==RED) 
+			else if (GetBLASignalState()==RED) 
 			{
 				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
@@ -3739,7 +3884,7 @@ class Semnal isclass Signal
 		} 
 		
 		// MANEVRA
-		if (is_manevra and !(is_intrare or is_iesire))
+		if (is_manevra and !(is_intrare or is_iesire or is_triere))
 		{
 			//Daca exista marker pentru manevra
 			FindMarker();
@@ -3796,7 +3941,7 @@ class Semnal isclass Signal
 				}
 			}
 		}
-	
+		SetFXNameText("name1", next_aspect + "," + this_aspect);
 	}
 		
 	//
@@ -3859,6 +4004,7 @@ class Semnal isclass Signal
 					active_shunt = false;
 					active_fault = false;
 					active_chemare = false;
+					trage_convoi = false;
 				}
 				else if (Str.ToInt(tok[1]) == S_ALB)
 					active_shunt = true;
@@ -3866,6 +4012,8 @@ class Semnal isclass Signal
 					active_chemare = true;
 				else if (Str.ToInt(tok[1]) == S_ROSU_AV)
 					active_fault = true;
+				else if (Str.ToInt(tok[1]) == S_TRIERE)
+					trage_convoi = true;
 				
 				UpdateAspect();
 			}
@@ -3893,14 +4041,14 @@ class Semnal isclass Signal
 			{		
 				if (msg.minor == "Train Approaching")
 				{
-					SetSignalState(AUTOMATIC, "");
 					bla_left = false;
-				}	
-				if (msg.minor == "Train Leaving")
-				{
-					SetSignalStateEx(EX_STOP, "Sens de circulatie invers");
-					bla_left = true;
+					UpdateAspect();
 				}
+				else if (msg.minor == "Train Leaving")
+				{
+					bla_left = true;
+					UpdateAspect();
+				}				
 			}		
 		}
 		else if (msg.major == "Junction")
@@ -3923,6 +4071,7 @@ class Semnal isclass Signal
 	
 	//
 	// Update all links and aspects when Surveyor or Driver finished loading
+	// In pre-TANE this is only called in DRIVER
 	//
 	void ModuleInitHandler(Message msg)
 	{
@@ -4024,7 +4173,7 @@ class Semnal isclass Signal
 		else
 			nume = numeAfisat;
 		
-		output.Print("<p><font size=15>Semnal RO CFR </font><font size=5>v3.0 - 21.02.2016</font></p><br>");
+		output.Print("<p><font size=15>Semnal RO CFR </font><font size=5>" + BUILD + "</font></p><br>");
 		output.Print("<p>Pentru configurarea semnalului se folosesc markeri.</p>");
 		
 		output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
@@ -4074,20 +4223,20 @@ class Semnal isclass Signal
 		
 		
 		// Incarca becurile din kuid-table
-		rosu = self.FindAsset("Red");
-		galben = self.FindAsset("Yellow");
-		verde = self.FindAsset("Green");
-		alb = self.FindAsset("White");
-		albastru = self.FindAsset("Blue");
-		albmic = self.FindAsset("Whitesmall");
-		galbenmic = self.FindAsset("Yellowsmall");
-		verdemic = self.FindAsset("Greensmall");
-		verdeclipitor = self.FindAsset("Greenblink");
-		galbenclipitor = self.FindAsset("Yellowblink");
-		rosuclipitor = self.FindAsset("Redblink");
-		albclipitor = self.FindAsset("Whiteblink");
-		alblinie = self.FindAsset("Whiteline");
-		galbenclipitor2 = self.FindAsset("Yellowblink2");
+		rosu = self.FindAsset("red");
+		galben = self.FindAsset("yellow");
+		verde = self.FindAsset("green");
+		alb = self.FindAsset("white");
+		albastru = self.FindAsset("blue");
+		albmic = self.FindAsset("whitesmall");
+		galbenmic = self.FindAsset("yellowsmall");
+		verdemic = self.FindAsset("greensmall");
+		verdeclipitor = self.FindAsset("greenblink");
+		galbenclipitor = self.FindAsset("yellowblink");
+		rosuclipitor = self.FindAsset("redblink");
+		albclipitor = self.FindAsset("whiteblink");
+		alblinie = self.FindAsset("whiteline");
+		galbenclipitor2 = self.FindAsset("yellowblink2");
 		
 		LightsOff();
 		LightThisLimit(0);
@@ -4096,22 +4245,20 @@ class Semnal isclass Signal
 		LightDirection(0);
 		LightLinie(0);
 
-		if ((signal_type == "TMV" and has_bar) or has_direction) 
-		{
+		if (signal_type == "TMV" and (has_bar or has_direction)) 
 			Letters = GetAsset().FindAsset("texture-lib");
-		}
 		
 		if (config.GetNamedTagAsFloat("trackside") < 0 and (is_bla or is_bla4i))
-		{
 			bla_left = true;
-		}
 		else
-		{
 			bla_left = false;
-		}
 		
 		// update pentru a afisa rosu daca e ultimul semnal
-		UpdateAspect();
+		if (World.GetTrainzVersion() >= 3.9f)
+			UpdateAspect();
+		else // in older versions of Trainz the initialization for surveyor is done here, not in the ModuleInit
+			if (World.GetCurrentModule() == World.SURVEYOR_MODULE)
+				UpdateAll();
 		
 		// handler pentru mesaje
 		AddHandler(me, "Semnal", "", "MessageHandler");		
