@@ -1,8 +1,8 @@
 //
 // RO CFR Signals Script
 // Version: 3.0
-// Build: 160306
-// Date: 06.03.2016 
+// Build: 160327
+// Date: 27.03.2016 
 // Author: vvmm (c) 2013-2016
 // Website: http://vvmm.freeforums.org/
 // 
@@ -15,7 +15,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-	define string BUILD = "v3.0 b160306";
+	define string BUILD = "v3.0 b160327";
 	
 	define int MARKER_LIMIT = 800; // limita maxima la care se cauta markeri
 	define int MACAZ_LIMIT = 1000; // doar pentru afisarea distantei
@@ -99,6 +99,7 @@ class Semnal isclass Signal
 
 	int[] junctionList = new int[0];
 	int nextSignal;
+	string nextSignalName;
 	
 	int next_aspect = -1;
 	int next_restrict = -1;
@@ -184,7 +185,7 @@ class Semnal isclass Signal
 		{
 			if (signal_type == "TMV")
 			{
-				GetFXAttachment("ies_st").SetFXTextureReplacement("cifra", Letters, 26 - ies_st);
+				GetFXAttachment("ies_st").SetFXTextureReplacement("cifra", Letters, 30 - ies_st);
 			}
 			else
 				if (ies_st)
@@ -196,13 +197,13 @@ class Semnal isclass Signal
 		{
 			if (ies_st == 0)
 			{
-				GetFXAttachment("ies_st0").SetFXTextureReplacement("cifra", Letters, 26);
-				GetFXAttachment("ies_st1").SetFXTextureReplacement("cifra", Letters, 26);
+				GetFXAttachment("ies_st0").SetFXTextureReplacement("cifra", Letters, 30);
+				GetFXAttachment("ies_st1").SetFXTextureReplacement("cifra", Letters, 30);
 			}
 			else
 			{
-				GetFXAttachment("ies_st" + direction % 2).SetFXTextureReplacement("cifra", Letters, 25);
-				GetFXAttachment("ies_st" + (direction + 1) % 2).SetFXTextureReplacement("cifra", Letters, 26);
+				GetFXAttachment("ies_st" + direction % 2).SetFXTextureReplacement("cifra", Letters, 29);
+				GetFXAttachment("ies_st" + (direction + 1) % 2).SetFXTextureReplacement("cifra", Letters, 30);
 			}
 		}
 		else
@@ -226,17 +227,17 @@ class Semnal isclass Signal
 			{
 				if (direction == 0)
 				{
-					GetFXAttachment("d0").SetFXTextureReplacement("cifra", Letters, 26);
-					GetFXAttachment("d1").SetFXTextureReplacement("cifra", Letters, 26);
+					GetFXAttachment("d0").SetFXTextureReplacement("cifra", Letters, 30);
+					GetFXAttachment("d1").SetFXTextureReplacement("cifra", Letters, 30);
 				}
 				else
 				{
-					GetFXAttachment("d" + direction % 2).SetFXTextureReplacement("cifra", Letters, 26 + direction);
-					GetFXAttachment("d" + (direction + 1) % 2).SetFXTextureReplacement("cifra", Letters, 26);
+					GetFXAttachment("d" + direction % 2).SetFXTextureReplacement("cifra", Letters, 30 + direction);
+					GetFXAttachment("d" + (direction + 1) % 2).SetFXTextureReplacement("cifra", Letters, 30);
 				}
 			}
 			else
-				GetFXAttachment("d").SetFXTextureReplacement("cifra", Letters, 26 + direction);
+				GetFXAttachment("d").SetFXTextureReplacement("cifra", Letters, 30 + direction);
 				
 			return;
 		}
@@ -420,6 +421,7 @@ class Semnal isclass Signal
 				for(k=132;k>=120;k=k-6) SetFXAttachment("" + k, albmic);
 				for(k=128;k>=124;k=k-4) SetFXAttachment("" + k, albmic);
 				break;
+			/****** START OF OBSOLETE - NOT USED ******/	
 			case 28: //1
 				for(k=102;k<=106;k=k+4) SetFXAttachment("" + k, verdemic);
 				for(k=107;k<=127;k=k+5) SetFXAttachment("" + k, verdemic);
@@ -509,6 +511,7 @@ class Semnal isclass Signal
 				for(k=117;k<=118;k=k+1) SetFXAttachment("" + k, verdemic);
 				for(k=109;k<=134;k=k+5) SetFXAttachment("" + k, verdemic);
 				break;
+			/****** END OF OBSOLETE - NOT USED ******/
 			default:;
 		}
 	}
@@ -976,7 +979,7 @@ class Semnal isclass Signal
 	// Find next signal and junctions and link
 	//
 	void LinkSemnal()
-	{
+	{	
 		GSTrackSearch GSTS = BeginTrackSearch(true);
 		MapObject mo = GSTS.SearchNext();
 		
@@ -993,8 +996,9 @@ class Semnal isclass Signal
 				if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
 				{
 					nextSignal = (cast<Semnal>mo).GetId();
+					nextSignalName = (cast<Semnal>mo).GetLocalisedName();
 					next_aspect = (cast<Semnal>mo).this_aspect;
-					SetFXNameText("name0",  mo.GetName());
+					//SetFXNameText("name0",  mo.GetName());
 					isNull = false;
 					break;
 				}
@@ -1008,6 +1012,14 @@ class Semnal isclass Signal
 					}
 				}
 			}
+			else if (cast<Signal>mo and GSTS.GetFacingRelativeToSearchDirection()) // daca avem semnale Trainz standard.
+			{
+				nextSignal = (cast<Signal>mo).GetId();
+				nextSignalName = (cast<Signal>mo).GetLocalisedName();
+				next_aspect = 0;
+				isNull = false;
+				break;
+			}
 			if (cast<Junction>mo)
 			{
 				//Interface.Print(GetName() + ": Macaz gasit: " + mo.GetName() + " " + mo.GetId());
@@ -1019,7 +1031,8 @@ class Semnal isclass Signal
 		if (isNull)
 		{
 			nextSignal = -2; // -1 rezervat pentru initializare de TRAINZ.
-			SetFXNameText("name0",  "-2");
+			nextSignalName = "Nu exista";
+			//SetFXNameText("name0",  "-2");
 			next_aspect = -1;
 		}
 		
@@ -1061,8 +1074,9 @@ class Semnal isclass Signal
 	int GetBLASignalState()
 	{
 		if (config.GetNamedTagAsFloat("trackside") < 0)
-			if (bla_left == true)
-				return 0;
+			if (World.GetTrainzVersion() > 4.0) // Train Approaching & Leaving does not exist prior to TANE
+				if (bla_left == true)
+					return 0;
 
 		return GetSignalState();
 	}
@@ -1632,8 +1646,6 @@ class Semnal isclass Signal
 		// AVARIE
 		if (is_avarie and !(is_bla or is_bla4i))
 		{
-			//TODO: e nevoie de rosu daca e pe partea stanga a caii duble?
-
 			if (active_fault)
 			{
 				this_aspect=S_ROSU_AV;
@@ -3484,7 +3496,7 @@ class Semnal isclass Signal
 					SetFXAttachment(B_ROSU_AV,rosu);
 				}
 			}
-			else if (GetBLASignalState()==RED) 
+			else if (GetBLASignalState()==RED or (next_aspect == -1)) 
 			{
 				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
@@ -3917,8 +3929,6 @@ class Semnal isclass Signal
 		// AVARIE
 		if (is_avarie and !is_bla)
 		{
-			//TODO: e nevoie de rosu daca e pe partea stanga a caii duble?
-
 			if (active_fault)
 			{
 				this_aspect=S_ROSU_AV;
@@ -3941,7 +3951,7 @@ class Semnal isclass Signal
 				}
 			}
 		}
-		SetFXNameText("name1", next_aspect + "," + this_aspect);
+		//SetFXNameText("name1", next_aspect + "," + this_aspect);
 	}
 		
 	//
@@ -4022,6 +4032,7 @@ class Semnal isclass Signal
 				if (has_direction)
 					LightDirection(Str.ToInt(tok[1]));
 			}
+
 		}
 		else if (msg.major == "Signal")
 		{
@@ -4032,7 +4043,6 @@ class Semnal isclass Signal
 					UpdateAll();
 				}
 			}
-			
 			// Change BLA LEFT state
 			if (msg.dst != me)
 				return;
@@ -4049,7 +4059,7 @@ class Semnal isclass Signal
 					bla_left = true;
 					UpdateAspect();
 				}				
-			}		
+			}	
 		}
 		else if (msg.major == "Junction")
 		{
@@ -4065,17 +4075,6 @@ class Semnal isclass Signal
 					}
 			}
 		}
-	}
-	
-	
-	
-	//
-	// Update all links and aspects when Surveyor or Driver finished loading
-	// In pre-TANE this is only called in DRIVER
-	//
-	void ModuleInitHandler(Message msg)
-	{
-		UpdateAll();
 	}
 	
 	void SetSignalName(string nume)
@@ -4178,20 +4177,32 @@ class Semnal isclass Signal
 		
 		output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
 		
-		output.Print("<p>Numele afisat al semnalului este: <a href=live://property/name>" + nume + "</a></p><br>");
+		output.Print("<p>Numele afisat al semnalului este: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
 		output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Scoate semnalul din uz</p><br>");
 
+		if (nextSignalName == "")
+			nextSignalName = "Fara nume";
+		output.Print("<p>Semnalul urmator direct: <font color=#ffff00><b>" + nextSignalName + "</b></font></p><br>");
+		
 		if (is_intrare or is_iesire or is_manevra)
-			output.Print("<p>Macazul urmator este la distanta de " + DistantaMacaz() + "m </p><br>");
+			output.Print("<p>Macazul urmator este la distanta de <font color=#ffff00><b>" + DistantaMacaz() + "m</b></font> </p><br>");
 		else
-			output.Print("<p>Semnalul urmator este la distanta de " + DistantaSemnal() + "m </p><br>");
+			output.Print("<p>Semnalul urmator este la distanta de <font color=#ffff00><b>" + DistantaSemnal() + "m</b></font> </p><br>");
 		
 		output.Print("<p>Mai multe detalii la http://vvmm.freeforums.org/</p>");
 		
 		return output.AsString();
 	}
 	
-	
+	//
+	// Wait for IDs to be assigned by Trainz
+	//
+	thread void InitialUpdate()
+	{
+		while (GetId() == -1)
+			Sleep(1.0);
+		UpdateAll();
+	}
 	
 	//
 	// Initialize the signal
@@ -4252,19 +4263,13 @@ class Semnal isclass Signal
 			bla_left = true;
 		else
 			bla_left = false;
-		
-		// update pentru a afisa rosu daca e ultimul semnal
-		if (World.GetTrainzVersion() >= 3.9f)
-			UpdateAspect();
-		else // in older versions of Trainz the initialization for surveyor is done here, not in the ModuleInit
-			if (World.GetCurrentModule() == World.SURVEYOR_MODULE)
-				UpdateAll();
-		
+			
+		InitialUpdate();
+					
 		// handler pentru mesaje
 		AddHandler(me, "Semnal", "", "MessageHandler");		
 		AddHandler(me, "Junction", "Toggled", "MessageHandler");
 		AddHandler(me, "Signal", "", "MessageHandler");
-		AddHandler(me, "World", "ModuleInit", "ModuleInitHandler");
 	}
 	
 	
