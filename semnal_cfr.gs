@@ -98,9 +98,9 @@ class Semnal isclass Signal
     Asset galbenclipitor2, Letters;
     Soup config;
 
-	int[] junctionList = new int[0];
-	int nextSignal;
-	string nextSignalName;
+    GameObjectID[] junctionIDList = new GameObjectID[0];
+    GameObjectID nextSignalID = null;
+    string nextSignalName;
 
     int next_aspect = S_UNDEF;
     int next_restrict = R_UNDEF;
@@ -971,19 +971,19 @@ class Semnal isclass Signal
         GSTrackSearch GSTS = BeginTrackSearch(true);
         MapObject mo = GSTS.SearchNext();
 
-        junctionList[0, junctionList.size()] = null;
+        junctionIDList[0, junctionIDList.size()] = null;
         bool isNull = true; // daca de exemplu e manevra inainte de sfarsit de linie (aka macaz iesire) nu vom avea rosu automat
 
         while (mo)
         {
             if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
             {
-                //Interface.Print(GetName() + ": Semnal gasit: " + mo.GetName() + " " + mo.GetId());
-				// sari peste semnalele de manevra care sunt intercalate cu cele de intrare
-				// daca am ajuns la urmatorul semnal nu ne mai intereseaza
-				if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
-				{
-					nextSignal = (cast<Semnal>mo).GetId();
+                //Interface.Print(GetName() + ": Semnal gasit: " + mo.GetName() + " " + mo.GetGameObjectID());
+                // sari peste semnalele de manevra care sunt intercalate cu cele de intrare
+                // daca am ajuns la urmatorul semnal nu ne mai intereseaza
+                if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
+                {
+                    nextSignalID = (cast<Semnal>mo).GetGameObjectID();
                     nextSignalName = (cast<Semnal>mo).GetLocalisedName();
                     next_aspect = (cast<Semnal>mo).this_aspect;
                     //SetFXNameText("name0",  mo.GetName());
@@ -1002,32 +1002,32 @@ class Semnal isclass Signal
             }
             else if (cast<Signal>mo and GSTS.GetFacingRelativeToSearchDirection()) // daca avem semnale Trainz standard.
             {
-				nextSignal = (cast<Signal>mo).GetId();
-				nextSignalName = (cast<Signal>mo).GetLocalisedName();
-				next_aspect = 0;
-				isNull = false;
-				break;
-			}
-			if (cast<Junction>mo)
-			{
-				//Interface.Print(GetName() + ": Macaz gasit: " + mo.GetName() + " " + mo.GetId());
-				junctionList[junctionList.size()] = (cast<Junction>mo).GetId();
-			}
+                nextSignalID = (cast<Signal>mo).GetGameObjectID();
+                nextSignalName = (cast<Signal>mo).GetLocalisedName();
+                next_aspect = 0;
+                isNull = false;
+                break;
+            }
+            if (cast<Junction>mo)
+            {
+                //Interface.Print(GetName() + ": Macaz gasit: " + mo.GetName() + " " + mo.GetGameObjectID());
+                junctionIDList[junctionIDList.size()] = (cast<Junction>mo).GetGameObjectID();
+            }
             mo = GSTS.SearchNext();
         }
 
         if (isNull)
         {
-        	nextSignal = -2; // -1 rezervat pentru initializare de TRAINZ.
-			nextSignalName = "Nu exista";
-			//SetFXNameText("name0",  "-2");
-			next_aspect = S_UNDEF;
-		}
-		
-		/*Interface.Print(GetName() + ": junctionList: ");
-		int i;
-		for (i=0;i<junctionList.size();++i)
-			Interface.Print("  -> " + junctionList[i].GetName());*/
+            nextSignalID = null;
+            nextSignalName = "Nu exista";
+            //SetFXNameText("name0",  "-2");
+            next_aspect = S_UNDEF;
+        }
+
+        /*Interface.Print(GetName() + ": junctionIDList: ");
+        int i;
+        for (i=0;i<junctionIDList.size();++i)
+            Interface.Print("  -> " + junctionIDList[i].GetName());*/
 
         // daca e de grup ne intereseaza si macazul de dinainte
         if (is_grup)
@@ -1038,7 +1038,7 @@ class Semnal isclass Signal
             {
                 if (cast<Junction>mo)
                 {
-                    junctionList[junctionList.size()] = (cast<Junction>mo).GetId();
+                    junctionIDList[junctionIDList.size()] = (cast<Junction>mo).GetGameObjectID();
                     break;
                 }
                 mo = GSTS.SearchNext();
@@ -4003,11 +4003,11 @@ class Semnal isclass Signal
         {
             string[] tok = Str.Tokens(msg.minor, "/");
 
-            //Interface.Print("###" + nextSignal + " - " + (cast<Signal>msg.src).GetId());
+            //Interface.Print("###" + nextSignalID + " - " + (cast<Signal>msg.src).GetGameObjectID());
             if (tok[0] == "stare")
             {
                 // nu face update-uri aiurea, doar daca e necesar
-                if (nextSignal == (cast<Signal>msg.src).GetId())
+                if (nextSignalID and nextSignalID.DoesMatch((cast<Signal>msg.src).GetGameObjectID()))
                 {
                     next_aspect = Str.ToInt(tok[1]);
                     UpdateAspect();
@@ -4072,8 +4072,8 @@ class Semnal isclass Signal
             if (msg.minor == "Toggled")
             {
                 int i;
-                for (i = 0; i < junctionList.size(); ++i)
-					if (junctionList[i] == (cast<Junction>msg.src).GetId())
+                for (i = 0; i < junctionIDList.size(); ++i)
+                    if (junctionIDList[i] and junctionIDList[i].DoesMatch((cast<Junction>msg.src).GetGameObjectID()))
                     {
                         // nu face update-uri aiurea, doar daca e necesar
                         UpdateAll();
@@ -4222,7 +4222,7 @@ class Semnal isclass Signal
     //
     thread void InitialUpdate()
     {
-        while (GetId() == -1)
+        while (GetGameObjectID() == null)
             Sleep(1.0);
         UpdateAll();
     }
