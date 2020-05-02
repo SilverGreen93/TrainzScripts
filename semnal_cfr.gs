@@ -101,7 +101,7 @@ class Semnal isclass Signal
 
     GameObjectID[] junctionIDList = new GameObjectID[0];
     GameObjectID nextSignalID = null;
-    string nextSignalName;
+    string nextSignalName = "nu există";
 
     int next_aspect = S_UNDEF;
     int next_restrict = R_UNDEF;
@@ -973,56 +973,32 @@ class Semnal isclass Signal
         MapObject mo = GSTS.SearchNext();
 
         junctionIDList[0, junctionIDList.size()] = null;
-        bool isNull = true; // daca de exemplu e manevra inainte de sfarsit de linie (aka macaz iesire) nu vom avea rosu automat
 
         while (mo)
         {
             if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
             {
-                //Interface.Print(GetName() + ": Semnal gasit: " + mo.GetName() + " " + mo.GetGameObjectID());
-                // sari peste semnalele de manevra care sunt intercalate cu cele de intrare
-                // daca am ajuns la urmatorul semnal nu ne mai intereseaza
-                if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
-                {
-                    nextSignalID = (cast<Semnal>mo).GetGameObjectID();
-                    nextSignalName = (cast<Semnal>mo).GetLocalisedName();
-                    next_aspect = (cast<Semnal>mo).this_aspect;
-                    //SetFXNameText("name0",  mo.GetName());
-                    isNull = false;
-                    break;
-                }
-                else //manevra
-                {
-                    if ((cast<Signal>mo).GetSignalState() == RED)
-                    {
-                        // avem semnal de manevra dupa cel de intrare si acesta e pe "rosu" adica de fapt cel de intrare trebuie sa fie rosu
-                        isNull = true;
-                        break;
-                    }
-                }
+                //Interface.Log("RO CFR> " + GetLocalisedName() + " Semnal gasit: " + mo.GetLocalisedName());
+                nextSignalID = (cast<Semnal>mo).GetGameObjectID();
+                nextSignalName = (cast<Semnal>mo).GetLocalisedName();
+                next_aspect = (cast<Semnal>mo).this_aspect;
+                //SetFXNameText("name0", "NS: " + nextSignalName);
+                //SetFXNameText("name1", "NA: " + next_aspect);
+                break;
             }
             else if (cast<Signal>mo and GSTS.GetFacingRelativeToSearchDirection()) // daca avem semnale Trainz standard.
             {
                 nextSignalID = (cast<Signal>mo).GetGameObjectID();
                 nextSignalName = (cast<Signal>mo).GetLocalisedName();
-                next_aspect = 0;
-                isNull = false;
+                next_aspect = S_ROSU;
                 break;
             }
-            if (cast<Junction>mo)
+            else if (cast<Junction>mo)
             {
                 //Interface.Print(GetName() + ": Macaz gasit: " + mo.GetName() + " " + mo.GetGameObjectID());
                 junctionIDList[junctionIDList.size()] = (cast<Junction>mo).GetGameObjectID();
             }
             mo = GSTS.SearchNext();
-        }
-
-        if (isNull)
-        {
-            nextSignalID = null;
-            nextSignalName = "nu există";
-            //SetFXNameText("name0",  "-2");
-            next_aspect = S_UNDEF;
         }
 
         /*Interface.Print(GetName() + ": junctionIDList: ");
@@ -1082,10 +1058,10 @@ class Semnal isclass Signal
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
                 {
-                    memo_aspect = S_ROSU;
+                    memo_aspect = this_aspect;
+                    Notify();
                     LightsOff();
                     SetFXAttachment(B_ROSU, rosu);
-                    Notify();
                 }
             }
             else
@@ -1396,8 +1372,8 @@ class Semnal isclass Signal
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
                 {
+                    memo_aspect = this_aspect;
                     Notify();
-                    memo_aspect = S_ROSU;
                     LightsOff();
                     SetFXAttachment(B_ROSU, rosu);
                 }
@@ -1723,8 +1699,8 @@ class Semnal isclass Signal
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
                 {
+                    memo_aspect = this_aspect;
                     Notify();
-                    memo_aspect = S_ROSU;
                     LightsOff();
                     SetFXAttachment(B_ROSU, rosu);
                 }
@@ -3499,7 +3475,6 @@ class Semnal isclass Signal
                     Notify();
                     LightsOff();
                     LightNextLimit(0);
-
                     SetFXAttachment(B_ROSU_AV,rosu);
                 }
             }
@@ -3508,11 +3483,10 @@ class Semnal isclass Signal
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
                 {
+                    memo_aspect = this_aspect;
                     Notify();
-                    memo_aspect=S_ROSU;
                     LightsOff();
                     LightNextLimit(0);;
-
                     SetFXAttachment(B_ROSU,rosu);
                 }
             }
@@ -4002,6 +3976,7 @@ class Semnal isclass Signal
     {
         if (msg.major == "Semnal")
         {
+            //Interface.Log("RO CFR> " + GetLocalisedName() + " : "  + msg.minor + " (next: " + nextSignalName + ")");
             string[] tok = Str.Tokens(msg.minor, "/");
 
             //Interface.Print("###" + nextSignalID + " - " + (cast<Signal>msg.src).GetGameObjectID());
@@ -4043,8 +4018,9 @@ class Semnal isclass Signal
         }
         else if (msg.major == "Signal")
         {
-            if (msg.minor == "StateChanged")
+            if (msg.minor == "State Changed")
             {
+                //Interface.Log("RO CFR> " + GetLocalisedName() + " : "  + msg.minor);
                 if (msg.src == me)
                 { // my aspect has changed
                     UpdateAll();
