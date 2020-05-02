@@ -29,6 +29,8 @@ class Semnal isclass Signal
     define string B_CHEMARE = "92";
 
     // Definitiile aspectelor semnalelor
+    define int S_NOMEMO = -2; // nu are un aspect memorat inca
+    define int S_UNDEF = -1; // nu are un asepct setat inca
     define int S_ROSU = 0;
     define int S_GALBEN = 1;
     define int S_VERDE = 2;
@@ -70,6 +72,8 @@ class Semnal isclass Signal
     define int T_VERDE_100 = 120;
 
     // Definitiile restrictiilor de viteza
+    define int R_NOMEMO = -2; // nu are o restrictie memorata inca
+    define int R_UNDEF = -1; // nu are o restrictie setata inca
     define int R_VS = 0;
     define int R_30 = 1;
     define int R_60 = 2;
@@ -97,11 +101,11 @@ class Semnal isclass Signal
 	int[] junctionList = new int[0];
 	int nextSignal;
 	string nextSignalName;
-	
-	int next_aspect = -1;
-	int next_restrict = -1;
-	int memo_aspect = -2; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
-	int memo_restrict = -2;
+
+    int next_aspect = S_UNDEF;
+    int next_restrict = R_UNDEF;
+    int memo_aspect = S_NOMEMO; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
+    int memo_restrict = R_NOMEMO;
     bool active_shunt, active_fault, active_chemare, xxx, trage_convoi;
     int direction, restriction, ies_st, linie;
     bool bla_left = false; // dacă semnalul BLA trebuie să respecte orientarea de bloc pe linia din stînga a căii duble
@@ -109,7 +113,7 @@ class Semnal isclass Signal
     string numeAfisat;
 
     // variabile publice
-    public int this_aspect = -1;
+    public int this_aspect = S_UNDEF;
     public bool is_iesire, is_intrare, is_bla, is_bla4i, is_prevestitor, is_pitic;
     public bool is_repetitor, is_manevra, is_avarie, is_triere, is_chemare, is_grup;
 
@@ -967,14 +971,14 @@ class Semnal isclass Signal
         GSTrackSearch GSTS = BeginTrackSearch(true);
         MapObject mo = GSTS.SearchNext();
 
-		junctionList[0, junctionList.size()] = null;
-		bool isNull = true; // daca de exemplu e manevra inainte de sfarsit de linie (aka macaz iesire) nu vom avea rosu automat
-		
-		while (mo)
-		{
-			if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
-			{	
-				//Interface.Print(GetName() + ": Semnal gasit: " + mo.GetName() + " " + mo.GetId());
+        junctionList[0, junctionList.size()] = null;
+        bool isNull = true; // daca de exemplu e manevra inainte de sfarsit de linie (aka macaz iesire) nu vom avea rosu automat
+
+        while (mo)
+        {
+            if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
+            {
+                //Interface.Print(GetName() + ": Semnal gasit: " + mo.GetName() + " " + mo.GetId());
 				// sari peste semnalele de manevra care sunt intercalate cu cele de intrare
 				// daca am ajuns la urmatorul semnal nu ne mai intereseaza
 				if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
@@ -1009,15 +1013,15 @@ class Semnal isclass Signal
 				//Interface.Print(GetName() + ": Macaz gasit: " + mo.GetName() + " " + mo.GetId());
 				junctionList[junctionList.size()] = (cast<Junction>mo).GetId();
 			}
-			mo = GSTS.SearchNext();
-		}
-		
-		if (isNull)
-		{
-			nextSignal = -2; // -1 rezervat pentru initializare de TRAINZ.
+            mo = GSTS.SearchNext();
+        }
+
+        if (isNull)
+        {
+        	nextSignal = -2; // -1 rezervat pentru initializare de TRAINZ.
 			nextSignalName = "Nu exista";
 			//SetFXNameText("name0",  "-2");
-			next_aspect = -1;
+			next_aspect = S_UNDEF;
 		}
 		
 		/*Interface.Print(GetName() + ": junctionList: ");
@@ -1072,7 +1076,7 @@ class Semnal isclass Signal
         // INTRARE sau IESIRE DTV 2
         if ((is_intrare or is_iesire) and lights_count == 2)
         {
-            if (GetSignalState() == RED or (next_aspect == -1))
+            if (GetSignalState() == RED or (next_aspect == S_UNDEF))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1153,7 +1157,7 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                 }
             }
-            else if (GetSignalState() == RED or (next_aspect == -1))
+            else if (GetSignalState() == RED or (next_aspect == S_UNDEF))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1386,7 +1390,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU, rosu);
                 }
             }
-            else if (GetBLASignalState() == RED or (next_aspect == -1))
+            else if (GetBLASignalState() == RED or (next_aspect == S_UNDEF))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1713,7 +1717,7 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                 }
             }
-            else if (GetSignalState() == RED  or (next_aspect == -1))
+            else if (GetSignalState() == RED  or (next_aspect == S_UNDEF))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1849,7 +1853,7 @@ class Semnal isclass Signal
         // INTRARE si IESIRE 2i
         if ((is_intrare or is_iesire) and (lights_count == 2))
         {
-            if (GetSignalState() == RED or (next_aspect == -1))
+            if (GetSignalState() == RED or (next_aspect == S_UNDEF))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -2283,7 +2287,7 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                 }
             }
-            else if (GetSignalState() == RED or (next_aspect == -1))
+            else if (GetSignalState() == RED or (next_aspect == S_UNDEF))
             {
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
@@ -3498,7 +3502,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU_AV,rosu);
                 }
             }
-            else if (GetBLASignalState()==RED or (next_aspect == -1))
+            else if (GetBLASignalState()==RED or (next_aspect == S_UNDEF))
             {
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
@@ -4070,7 +4074,7 @@ class Semnal isclass Signal
                 int i;
                 for (i = 0; i < junctionList.size(); ++i)
 					if (junctionList[i] == (cast<Junction>msg.src).GetId())
-					{
+                    {
                         // nu face update-uri aiurea, doar daca e necesar
                         UpdateAll();
                         break;
@@ -4136,13 +4140,13 @@ class Semnal isclass Signal
         if (propertyID == "disabled")
         {
             xxx = !xxx;
-            memo_aspect = -1;
+            memo_aspect = S_UNDEF;
             UpdateAspect();
         }
         else if (propertyID == "bla_left")
         {
             bla_left = !bla_left;
-            memo_aspect = -1;
+            memo_aspect = S_UNDEF;
             UpdateAspect();
         }
     }
