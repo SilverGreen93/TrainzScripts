@@ -1,8 +1,9 @@
-//Script pentru Semnalele CFR luminoase & mecanice
-//Autor: Mihai Alexandru Vasiliu (c) 2013
-//Bazat pe scriptul original de Octavian
-//Data: 30-08-2013
-
+/*
+ * Script pentru Semnalele CFR luminoase & mecanice
+ * Autor: Mihai Alexandru Vasiliu (c) 2013
+ * v2.5 04-09-2013
+ */
+ 
 include "Signal.gs"
 include "Junction.gs"
 
@@ -75,8 +76,10 @@ class JRule
 
 class Semnal isclass Signal
 {
+	public define int MARKER_LIMIT = 500; //la cati metri maxim se poate cauta un marker de restrictie sau directie 
+	
 	//Definitiile textelor de afisat
-	public define string T_TITLE = "<p><font color=#FFFFFF size=15>Semnal RO CFR</font> <font color=#FFFFFF size=5>ver. 2.02</font></p>";
+	public define string T_TITLE = "<p><font color=#FFFFFF size=15>Semnal RO CFR</font><font color=#FFFFFF size=3> v2.5 - 04-SEP-2013</font></p><p><font color=#FFFFFF size=2> Configurarea se face folosind markeri conform tutorialului. Pagina de proprietati de mai jos nu se foloseste decat in scop de backup in cazul in care configurarea cu markeri esueaza.</font></p>";
 	public define string T_BGCOLOR = "bgcolor=#B0B0B0";
 	public define string T_BGCOLOR2 = "bgcolor=#D0B040";
 	public define string T_SELECT_DIR = "Indicatorul de directie";
@@ -192,7 +195,10 @@ class Semnal isclass Signal
 	public string thisSignalDisplayName;
 
 	Semnal[] subscribers=new Semnal[0];
-
+	
+	//Declaratii de functii ce vor fi apelate in neordine
+	void NOTHREADSetup(int mode);
+	
 	//Functia ce incarca stringurile "constante" definite mai sus
 	void IncarcaStringurile()
 	{
@@ -354,7 +360,27 @@ class Semnal isclass Signal
 	//Functia ce returneaza valoarea pentru indicatorul de directie din reguli
 	int FindDirection(void)
 	{
-		if (current_config_index==-1)
+		//Daca exista marker pentru viteza pe linie
+		GSTrackSearch GSTS = BeginTrackSearch(true);
+		MapObject mo = GSTS.SearchNext();
+		
+		while (mo)
+		{
+			if (GSTS.GetFacingRelativeToSearchDirection())
+			{
+				if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_dir")))
+				{
+					return Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_dir"));
+				}
+			}
+			if (GSTS.GetDistance() > MARKER_LIMIT)
+			{
+				break;
+			}
+			mo = GSTS.SearchNext();
+		}
+		
+		if (current_config_index==-1) //daca nu exista reguli
 			return 0;
 		return rules[current_config_index].direction_marker;
 	}
@@ -368,8 +394,28 @@ class Semnal isclass Signal
 			k=0;
 		else if (is_tmv)
 			k=10;
-			
-		if (current_config_index==-1)
+		
+		//Daca exista marker pentru viteza pe linie
+		GSTrackSearch GSTS = BeginTrackSearch(true);
+		MapObject mo = GSTS.SearchNext();
+		
+		while (mo)
+		{
+			if (GSTS.GetFacingRelativeToSearchDirection())
+			{
+				if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_vr")))
+				{
+					return Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_vr"));
+				}
+			}
+			if (GSTS.GetDistance() > MARKER_LIMIT)
+			{
+				break;
+			}
+			mo = GSTS.SearchNext();
+		}
+
+		if (current_config_index==-1) //daca nu exista reguli
 			return k;
 			
 		return rules[current_config_index].slow;
@@ -988,7 +1034,10 @@ class Semnal isclass Signal
 				if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
 					SetFXAttachment(B_ALB,null);
 				if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+				{
 					SetFXAttachment(B_LINIE,null);
+					SetFXAttachment(B_CHEMARE,null);
+				}
 			}
 			break;
 		case 4:	//SSSR 4
@@ -2252,8 +2301,32 @@ class Semnal isclass Signal
 						
 						//Daca este activata iesirea pe linia din stanga
 						if (current_config_index!=-1)
+						{
 							if (Str.ToInt(rules[current_config_index].exit_left))
 								SetFXAttachment(B_LINIE,alblinie);
+						}
+						else
+						{
+							//Daca exista marker pentru iesire pe linie stanga
+							GSTrackSearch GSTS = BeginTrackSearch(true);
+							MapObject mo = GSTS.SearchNext();
+							
+							while (mo)
+							{
+								if (GSTS.GetFacingRelativeToSearchDirection())
+								{
+									if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_st")))
+									{
+										SetFXAttachment(B_LINIE,alblinie);
+									}
+								}
+								if (GSTS.GetDistance() > MARKER_LIMIT)
+								{
+									break;
+								}
+								mo = GSTS.SearchNext();
+							}
+						}
 						
 						if (this_aspect>=T_GALBEN and this_aspect<=T_GALBEN_100)
 							SetFXAttachment(B_GALBEN,galben);
@@ -2708,48 +2781,58 @@ class Semnal isclass Signal
 		//MANEVRA
 		if (Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
 		{
-			//Daca a trecut trenul de semnal si nu e de I/E pune albastru
-			if (!Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")) and GetSignalState()==RED)
+			//Daca exista marker pentru manevra
+			if (FindLimit() == 91)
 			{
-				this_aspect=next_aspect;
-				if (this_aspect!=memo_aspect)
-				{
-					memo_aspect=this_aspect;
-					NotifySubscribers();
-					Lights_Off();
-					SetFXAttachment(B_ALBASTRU,albastru);
-				}
+				Lights_Off();
+				SetFXAttachment(B_ALB,alb);
+				return;
 			}
-			
-			//Daca nu e manevra permisa si nu e de I/E pune albastru
-			if (!active_shunt and !Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+			else
 			{
-				this_aspect=next_aspect;
-				if (this_aspect!=memo_aspect)
+				//Daca a trecut trenul de semnal si nu e de I/E pune albastru
+				if (!Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")) and GetSignalState()==RED)
 				{
-					memo_aspect=this_aspect;
-					NotifySubscribers();
-					Lights_Off();
-					SetFXAttachment(B_ALBASTRU,albastru);
-				}
-			}
-			
-			//Daca e activa manevra si e liber pune alb
-			if (active_shunt and !(GetSignalState()==RED))
-			{
-				if (this_aspect!=S_ALB)
-				{
-					this_aspect=S_ALB;
-					memo_aspect=S_ALB;
-					NotifySubscribers();
-					Lights_Off();
-					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER"))) 
+					this_aspect=next_aspect;
+					if (this_aspect!=memo_aspect)
 					{
-						direction=0;
-						Lightup_Direction_Marker();
+						memo_aspect=this_aspect;
+						NotifySubscribers();
+						Lights_Off();
+						SetFXAttachment(B_ALBASTRU,albastru);
 					}
-					SetSpeedLimit(20/3.6);
-					SetFXAttachment(B_ALB,alb);
+				}
+				
+				//Daca nu e manevra permisa si nu e de I/E pune albastru
+				if (!active_shunt and !Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+				{
+					this_aspect=next_aspect;
+					if (this_aspect!=memo_aspect)
+					{
+						memo_aspect=this_aspect;
+						NotifySubscribers();
+						Lights_Off();
+						SetFXAttachment(B_ALBASTRU,albastru);
+					}
+				}
+				
+				//Daca e activa manevra si e liber pune alb
+				if (active_shunt and !(GetSignalState()==RED))
+				{
+					if (this_aspect!=S_ALB)
+					{
+						this_aspect=S_ALB;
+						memo_aspect=S_ALB;
+						NotifySubscribers();
+						Lights_Off();
+						if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER"))) 
+						{
+							direction=0;
+							Lightup_Direction_Marker();
+						}
+						SetSpeedLimit(20/3.6);
+						SetFXAttachment(B_ALB,alb);
+					}
 				}
 			}
 		}	
@@ -3419,9 +3502,33 @@ class Semnal isclass Signal
 						
 						//Daca este activata iesirea pe linia din stanga
 						if (current_config_index!=-1)
+						{
 							if (Str.ToInt(rules[current_config_index].exit_left))
 								SetFXAttachment(B_LINIE,alblinie);
-
+						}
+						else
+						{
+							//Daca exista marker pentru iesire pe linie stanga
+							GSTrackSearch GSTS = BeginTrackSearch(true);
+							MapObject mo = GSTS.SearchNext();
+							
+							while (mo)
+							{
+								if (GSTS.GetFacingRelativeToSearchDirection())
+								{
+									if (Str.ToInt(mo.GetAsset().GetStringTable().GetString("rosig_st")))
+									{
+										SetFXAttachment(B_LINIE,alblinie);
+									}
+								}
+								if (GSTS.GetDistance() > MARKER_LIMIT)
+								{
+									break;
+								}
+								mo = GSTS.SearchNext();
+							}
+						}
+						
 						switch (this_aspect)
 						{
 						case S_GALBEN:
@@ -3725,48 +3832,58 @@ class Semnal isclass Signal
 		//MANEVRA
 		if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")))
 		{
-			//Daca a trecut trenul de semnal si nu e de I/E pune albastru
-			if (!Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) and GetSignalState()==RED)
+			//Daca exista marker pentru manevra
+			if (FindLimit() == 91)
 			{
-				this_aspect=next_aspect;
-				if (this_aspect!=memo_aspect)
-				{
-					memo_aspect=this_aspect;
-					NotifySubscribers();
-					Lights_Off();
-					SetFXAttachment(B_ALBASTRU,albastru);
-				}
+				Lights_Off();
+				SetFXAttachment(B_ALB,alb);
+				return;
 			}
-			
-			//Daca nu e manevra permisa si nu e de I/E pune albastru
-			if (!active_shunt and !Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")))
+			else
 			{
-				this_aspect=next_aspect;
-				if (this_aspect!=memo_aspect)
+				//Daca a trecut trenul de semnal si nu e de I/E pune albastru
+				if (!Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) and GetSignalState()==RED)
 				{
-					memo_aspect=this_aspect;
-					NotifySubscribers();
-					Lights_Off();
-					SetFXAttachment(B_ALBASTRU,albastru);
-				}
-			}
-			
-			//Daca e activa manevra si e liber pune alb
-			if (active_shunt and !(GetSignalState()==RED))
-			{
-				if (this_aspect!=S_ALB)
-				{
-					this_aspect=S_ALB;
-					memo_aspect=S_ALB;
-					NotifySubscribers();
-					Lights_Off();
-					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER"))) 
+					this_aspect=next_aspect;
+					if (this_aspect!=memo_aspect)
 					{
-						direction=0;
-						Lightup_Direction_Marker();
+						memo_aspect=this_aspect;
+						NotifySubscribers();
+						Lights_Off();
+						SetFXAttachment(B_ALBASTRU,albastru);
 					}
-					SetSpeedLimit(20/3.6);
-					SetFXAttachment(B_ALB,alb);
+				}
+				
+				//Daca nu e manevra permisa si nu e de I/E pune albastru
+				if (!active_shunt and !Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")))
+				{
+					this_aspect=next_aspect;
+					if (this_aspect!=memo_aspect)
+					{
+						memo_aspect=this_aspect;
+						NotifySubscribers();
+						Lights_Off();
+						SetFXAttachment(B_ALBASTRU,albastru);
+					}
+				}
+				
+				//Daca e activa manevra si e liber pune alb
+				if (active_shunt and !(GetSignalState()==RED))
+				{
+					if (this_aspect!=S_ALB)
+					{
+						this_aspect=S_ALB;
+						memo_aspect=S_ALB;
+						NotifySubscribers();
+						Lights_Off();
+						if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER"))) 
+						{
+							direction=0;
+							Lightup_Direction_Marker();
+						}
+						SetSpeedLimit(20/3.6);
+						SetFXAttachment(B_ALB,alb);
+					}
 				}
 			}
 		} 
@@ -3837,6 +3954,9 @@ class Semnal isclass Signal
 				default:;
 				}
 			}
+			//pentru legare automata semnale; pentru a putea folosi markeri la macaze
+			NOTHREADSetup(1);
+			//----------------
 			Update();
 		}
 	}
@@ -3844,7 +3964,7 @@ class Semnal isclass Signal
 	void JunctionChange(Message msg)
 	{
 		Semnal next_s;
-
+			
 		FindRuleIndex(msg.src);
 		if (junction_querry_ok)
 		{
@@ -5045,7 +5165,7 @@ class Semnal isclass Signal
 			}
 		}
 	}
-
+	
 	//Functia ce este apelata la crearea obiectului
 	public void Init(void)
 	{
@@ -5135,10 +5255,11 @@ class Semnal isclass Signal
 		AddHandler(me,"DezactivAvarie","","FaultDisable");	//Opreste avarie
 		AddHandler(me,"ActivChemare","","CallEnable");		//Activeaza chemare
 		AddHandler(me,"DezactivChemare","","CallDisable");	//Opreste chemare
-		AddHandler(me,"Signal","StateChanged","SignalChange");	//S-a schimbat aspectul semnalului
+		AddHandler(me,"Signal","StateChanged","SignalChange");	//S-a schimbat aspectul unui semnal
 		AddHandler(me,"Junction","Toggled","JunctionChange");	//S-a schimbat orientarea unui macaz
 		AddHandler(me,"Semnal","Subscribe","Subscribe");
 		AddHandler(me,"Semnal","UnSubscribe","UnSubscribe");
+		
 	}
 
 };
