@@ -1,7 +1,8 @@
 //
 // RO CFR Signals Script
-// Author: vvmm (c) 2012-2016
 // v3.0 20-JAN-2016
+// Author: vvmm (c) 2013-2016
+// Website: http://vvmm.freeforums.org/
 // 
 
 include "signal.gs"
@@ -5157,7 +5158,7 @@ B:
 		}	
 		
 		//SetFXNameText("name0",GetSignalStateEx());
-		//SetFXNameText("name1",msg.minor);
+		//SetFXNameText("name1",(cast<GameObject>msg.src).GetId());
 
 	}
 	
