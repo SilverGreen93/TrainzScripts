@@ -1,17 +1,17 @@
-//Script pentru Semnalele CFR luminoase
+//Script pentru Semnalele CFR luminoase & mecanice
 //Autor: Mihai Alexandru Vasiliu (c) 2013
 //Bazat pe scriptul original de Octavian
+//Data: 30-08-2013
 
-include "ScenarioBehavior.gs"
-include "common.gs"
 include "Signal.gs"
 include "Junction.gs"
-include "gs.gs"
-include "Soup.gs"
+
+class SigLib isclass Library
+{
+};
 
 class JRule
 {
-
 	public Junction[] junc=new Junction[0];
 	public string[] njunc=new string[0];
 	public int[] dir=new int[0];
@@ -71,19 +71,111 @@ class JRule
 			junc[i]=cast<Junction>Router.GetGameObject(njunc[i]);
 		}
 	}
-
 };
 
 class Semnal isclass Signal
 {
+	//Definitiile textelor de afisat
+	public define string T_TITLE = "<p><font color=#FFFFFF size=15>Semnal RO CFR</font> <font color=#FFFFFF size=5>ver. 2.02</font></p>";
+	public define string T_BGCOLOR = "bgcolor=#B0B0B0";
+	public define string T_BGCOLOR2 = "bgcolor=#D0B040";
+	public define string T_SELECT_DIR = "Indicatorul de directie";
+	public define string T_SELECT_NAME = "Numele afisat al Semnalului";
+	public define string T_SELECT_RESTRICT = "Semnalul indica restrictia";
+	public define string T_SELECT_INSTRUCT = "Tip semnalizare";
+	public define string T_VITRED = "Restrictia de Viteza";
+	public define string T_NONE = "<i>Alege</i>";
+	public define string T_DEL = "<font color=#FF0000>Sterge</font>";
+	public define string T_RULES_NONE = "Directii Nedefinite";
+	public define string T_RULES_ADD = "Adauga Configuratie";
+	public define string T_JUNCTION = "Lista de Macaze";
+	public define string T_JUNCTION_LEFT = "Stanga";
+	public define string T_JUNCTION_FORWARD = "Mijloc";
+	public define string T_JUNCTION_RIGHT = "Dreapta";
+	public define string T_JUNCTION_ADD = "Adauga Macaz";
+	public define string T_IESIRE_ST = "Iesire pe linia din stanga a caii duble ";
+	public define string T_XXX = "Semnal scos din uz  ";	
+		
+	public string[] T_INSTRUCTIA;
+	public string[] T_DIRECTIA;
+	public string[] T_RESTRICTIA;
+		
+	//Definitiile becurilor (efectelor din config)
+	public define string B_ROSU = "0";
+	public define string B_GALBEN = "1";
+	public define string B_VERDE = "2";
+	public define string B_GAL_JOS = "3";
+	public define string B_LINIE = "80";
+	public define string B_ROSU_AV = "70";
+	public define string B_ALBASTRU = "90";
+	public define string B_ALB = "91";
+	public define string B_CHEMARE = "92";
+
+	//Definitiile aspectelor semnalelor
+	public define int S_ROSU = 0;
+	public define int S_GALBEN = 1;
+	public define int S_VERDE = 2;
+	public define int S_GAL_CL = 3;
+	public define int S_GAL_DCL = 4;
+	public define int S_VER_CL = 6;
+	public define int S_GAL_GAL = 7;
+	public define int S_VER_GAL = 8;
+	public define int S_GAL_GAL_60 = 13;
+	public define int S_VER_GAL_60 = 14;
+	public define int S_GAL_GAL_90 = 19;
+	public define int S_VER_GAL_90 = 20;
+	public define int S_ROSU_AV = 70;
+	public define int S_ALBASTRU = 90;
+	public define int S_ALB = 91;
+	public define int S_CHEMARE = 92;
+	public define int T_GALBEN = 100;
+	public define int T_GALBEN_20 = 101;
+	public define int T_GALBEN_30 = 102;
+	public define int T_GALBEN_60 = 103;
+	public define int T_GALBEN_80 = 104;
+	public define int T_GALBEN_90 = 105;
+	public define int T_GALBEN_100 = 106;
+	public define int T_VER_CL = 107;
+	public define int T_VER_CL_20 = 108;
+	public define int T_VER_CL_30 = 109;
+	public define int T_VER_CL_60 = 110;
+	public define int T_VER_CL_80 = 111;
+	public define int T_VER_CL_90 = 112;
+	public define int T_VER_CL_100 = 113;
+	public define int T_VERDE = 114;
+	public define int T_VERDE_20 = 115;
+	public define int T_VERDE_30 = 116;
+	public define int T_VERDE_60 = 117;
+	public define int T_VERDE_80 = 118;
+	public define int T_VERDE_90 = 119;
+	public define int T_VERDE_100 = 120;
+
+	//Definitiile restrictiilor de viteza
+	public define int R_VS = 0;
+	public define int R_30 = 1;
+	public define int R_60 = 2;
+	public define int R_90 = 3;
+	public define int R_T20 = 4;
+	public define int R_T30 = 5;
+	public define int R_T60 = 6;
+	public define int R_T80 = 7;
+	public define int R_T90 = 8;
+	public define int R_T100 = 9;
+	public define int R_TVS = 10;
+	public define int R_MANEVRA = 91;
+	public define int R_CHEMARE = 92;
+
+	//Definitiile variabilelor
 	public StringTable ST;
-	Asset rosu,galben,verde,alb,albastru,albmic,galbenmic,verdemic,verdeclipitor,galbenclipitor,albclipitor,alblinie,galbenclipitor2;
+	Asset rosu,galben,verde,alb,albastru,albmic,galbenmic,verdemic,verdeclipitor,galbenclipitor,albclipitor,rosuclipitor,alblinie,galbenclipitor2;
 	public JRule[] rules=new JRule[0];
 	public int this_aspect;
 	public int restriction;
 	public int direction;
 	public int active_shunt=0;	//Pentru manevra
 	public int active_fault=0;	//Pentru avarie
+	public int active_call=0;	//Pentru chemare
+	public int xxx=0; //Pentru semnal scos din uz
 	public int next_aspect;
 	public int next_restrict;
 	public int use_instruction=0;
@@ -92,7 +184,7 @@ class Semnal isclass Signal
 	int memo_aspect=-5;
 	int memo_direction=-5;
 	int memo_restrict=-5;
-	public int is_dtv, is_tmv;
+	public int is_dtv, is_tmv, is_mec;
 	public Signal nextSignal;
 	public string nextSignalName;
 	public Signal active_nextSignal;
@@ -101,6 +193,76 @@ class Semnal isclass Signal
 
 	Semnal[] subscribers=new Semnal[0];
 
+	//Functia ce incarca stringurile "constante" definite mai sus
+	void IncarcaStringurile()
+	{
+		T_INSTRUCTIA = new string[5];
+		T_DIRECTIA = new string [50];
+		T_RESTRICTIA = new string [100];
+		
+		T_INSTRUCTIA[1] = "DTV Standard CFR";
+		T_INSTRUCTIA[2] = "MECANIC Clasic CFR";
+		T_INSTRUCTIA[3] = "TMV Standard CFR";
+	
+		T_DIRECTIA[0] = "Fara indicarea directiei";
+		T_DIRECTIA[1] = "Directia: A";
+		T_DIRECTIA[2] = "Directia: B";
+		T_DIRECTIA[3] = "Directia: C";
+		T_DIRECTIA[4] = "Directia: D";
+		T_DIRECTIA[5] = "Directia: E";
+		T_DIRECTIA[6] = "Directia: F";
+		T_DIRECTIA[7] = "Directia: G";
+		T_DIRECTIA[8] = "Directia: H";
+		T_DIRECTIA[9] = "Directia: I";
+		T_DIRECTIA[10] = "Directia: J";
+		T_DIRECTIA[11] = "Directia: K";
+		T_DIRECTIA[12] = "Directia: L";
+		T_DIRECTIA[13] = "Directia: M";
+		T_DIRECTIA[14] = "Directia: N";
+		T_DIRECTIA[15] = "Directia: O";
+		T_DIRECTIA[16] = "Directia: P";
+		T_DIRECTIA[17] = "Directia: Q";
+		T_DIRECTIA[18] = "Directia: R";
+		T_DIRECTIA[19] = "Directia: S";
+		T_DIRECTIA[20] = "Directia: T";
+		T_DIRECTIA[21] = "Directia: U";
+		T_DIRECTIA[22] = "Directia: V";
+		T_DIRECTIA[23] = "Directia: W";
+		T_DIRECTIA[24] = "Directia: X";
+		T_DIRECTIA[25] = "Directia: Y";
+		T_DIRECTIA[26] = "Directia: Z";
+		T_DIRECTIA[27] = "Lipsa distantei de franare";
+		T_DIRECTIA[28] = "Linia: 1";
+		T_DIRECTIA[29] = "Linia: 2";
+		T_DIRECTIA[30] = "Linia: 3";
+		T_DIRECTIA[31] = "Linia: 4";
+		T_DIRECTIA[32] = "Linia: 5";
+		T_DIRECTIA[33] = "Linia: 6";
+		T_DIRECTIA[34] = "Linia: 7";
+		T_DIRECTIA[35] = "Linia: 8";
+		T_DIRECTIA[36] = "Linia: 9";
+		T_DIRECTIA[37] = "Linia: 10";
+		T_DIRECTIA[38] = "Linia: 11";
+		T_DIRECTIA[39] = "Linia: 12";
+		T_DIRECTIA[40] = "Linia: 13";
+		T_DIRECTIA[41] = "Linia: 14";
+		
+		T_RESTRICTIA[0] = "Viteza Stabilita";
+		T_RESTRICTIA[1] = "Viteza Redusa: 30km/h";
+		T_RESTRICTIA[2] = "Viteza Redusa: 60km/h";
+		T_RESTRICTIA[3] = "Viteza Redusa: 90km/h";
+		T_RESTRICTIA[4] = "Viteza Redusa: 20km/h";
+		T_RESTRICTIA[5] = "Viteza Redusa: 30km/h";
+		T_RESTRICTIA[6] = "Viteza Redusa: 60km/h";
+		T_RESTRICTIA[7] = "Viteza Redusa: 80km/h";
+		T_RESTRICTIA[8] = "Viteza Redusa: 90km/h";
+		T_RESTRICTIA[9] = "Viteza Redusa: 100km/h";
+		T_RESTRICTIA[10] = "Viteza Stabilita";
+		T_RESTRICTIA[90] = "Manevra Interzisa";
+		T_RESTRICTIA[91] = "Manevra: 20km/h";
+		T_RESTRICTIA[92] = "Chemare: 20km/h";
+	}
+	
 	//Functia ce returneaza distanta pana la semnalul urmator
 	int DistantaSemnal(void)
 	{
@@ -136,7 +298,7 @@ class Semnal isclass Signal
 				dist = GSTS.GetDistance();
 				break;
 			}
-			if (GSTS.GetDistance() > 1000) //Nu cauta semnale mai departe de 1km
+			if (GSTS.GetDistance() > 1000) //Nu cauta macazuri mai departe de 1km
 			{
 				break;
 			}
@@ -155,6 +317,7 @@ class Semnal isclass Signal
 		}
 	}
 
+	//Functia ce gaseste regula curenta in functie de orientarea macazelor
 	void FindRuleIndex(Junction querry)
 	{
 		int c;
@@ -188,6 +351,7 @@ class Semnal isclass Signal
 		current_config_index=l;
 	}
 
+	//Functia ce returneaza valoarea pentru indicatorul de directie din reguli
 	int FindDirection(void)
 	{
 		if (current_config_index==-1)
@@ -195,11 +359,12 @@ class Semnal isclass Signal
 		return rules[current_config_index].direction_marker;
 	}
 
+	//Functia ce returneaza valoarea restrictiei de viteza din reguli
 	int FindLimit(void)
 	{
 		int k;
 		
-		if (is_dtv)
+		if (is_dtv or is_mec)
 			k=0;
 		else if (is_tmv)
 			k=10;
@@ -250,11 +415,13 @@ class Semnal isclass Signal
 						goto A;
 					else if (Str.ToInt(Next_settings.GetString("SIGNAL_TMV_SHUNT")) and !Str.ToInt(Next_settings.GetString("SIGNAL_TMV_EXITENTRY")))
 						goto A;
-					else if (Str.ToInt(Next_settings.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(Next_settings.GetString("SIGNAL_TMV_REPEATER")))
+					else if (Str.ToInt(Next_settings.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(Next_settings.GetString("SIGNAL_TMV_REPEATER")) or Str.ToInt(Next_settings.GetString("SIGNAL_MEC_REPEATER")))
 						goto A;
 					else if (Str.ToInt(Next_settings.GetString("SIGNAL_DTV_FAULT")) and !Str.ToInt(Next_settings.GetString("SIGNAL_DTV_LINE_BLOCK")))
 						goto A;
 					else if (Str.ToInt(Next_settings.GetString("SIGNAL_TMV_FAULT")) and !Str.ToInt(Next_settings.GetString("SIGNAL_TMV_LINE_BLOCK")))
+						goto A;
+					else if (Str.ToInt(Next_settings.GetString("SIGNAL_MEC_SHUNT")))
 						goto A;
 				}
 				
@@ -300,11 +467,13 @@ class Semnal isclass Signal
 							goto B;
 						else if (Str.ToInt(Next_settings.GetString("SIGNAL_TMV_SHUNT")) and !Str.ToInt(Next_settings.GetString("SIGNAL_TMV_EXITENTRY")))
 							goto B;
-						else if (Str.ToInt(Next_settings.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(Next_settings.GetString("SIGNAL_TMV_REPEATER")))
+						else if (Str.ToInt(Next_settings.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(Next_settings.GetString("SIGNAL_TMV_REPEATER")) or Str.ToInt(Next_settings.GetString("SIGNAL_MEC_REPEATER")))
 							goto B;
 						else if (Str.ToInt(Next_settings.GetString("SIGNAL_DTV_FAULT")) and !Str.ToInt(Next_settings.GetString("SIGNAL_DTV_LINE_BLOCK")))
 							goto B;
 						else if (Str.ToInt(Next_settings.GetString("SIGNAL_TMV_FAULT")) and !Str.ToInt(Next_settings.GetString("SIGNAL_TMV_LINE_BLOCK")))
+							goto B;
+						else if (Str.ToInt(Next_settings.GetString("SIGNAL_MEC_SHUNT")))
 							goto B;
 					}
 					
@@ -338,14 +507,15 @@ class Semnal isclass Signal
 			//Aprinde becurile in forma corespunzatoare literei
 			switch (direction)
 			{
-			case 1:
+			//Litere
+			case 1: //A
 				for(k=130;k>=110;k=k-5) SetFXAttachment(""+k,albmic);
 				for(k=106;k>=102;k=k-4) SetFXAttachment(""+k,albmic);
 				for(k=108;k<=114;k=k+6) SetFXAttachment(""+k,albmic);
 				for(k=119;k<=134;k=k+5) SetFXAttachment(""+k,albmic);
 				for(k=121;k<=123;k=k+1) SetFXAttachment(""+k,albmic);
 				break;
-			case 2: 
+			case 2: //B
 				for(k=130;k>=100;k=k-5) SetFXAttachment(""+k,albmic);
 				for(k=101;k<=103;k=k+1) SetFXAttachment(""+k,albmic);
 				for(k=109;k<=109;k=k+6) SetFXAttachment(""+k,albmic);
@@ -489,24 +659,114 @@ class Semnal isclass Signal
 				for(k=111;k<=123;k=k+6) SetFXAttachment(""+k,albmic);
 				for(k=121;k>=113;k=k-4) SetFXAttachment(""+k,albmic);
 				break;
-			case 25:
+			case 25: //Y
 				for(k=105;k<=117;k=k+6) SetFXAttachment(""+k,albmic);
 				for(k=113;k>=109;k=k-4) SetFXAttachment(""+k,albmic);
 				for(k=122;k<=132;k=k+5) SetFXAttachment(""+k,albmic);
 				for(k=100;k<=100;k=k+5) SetFXAttachment(""+k,albmic);
 				for(k=104;k<=104;k=k+5) SetFXAttachment(""+k,albmic);
 				break;
-			case 26:
+			case 26: //Z
 				for(k=100;k<=104;k=k+1) SetFXAttachment(""+k,albmic);
 				for(k=108;k<=120;k=k+4) SetFXAttachment(""+k,albmic);
 				for(k=125;k<=130;k=k+5) SetFXAttachment(""+k,albmic);
 				for(k=131;k<=134;k=k+1) SetFXAttachment(""+k,albmic);
 				for(k=109;k<=109;k=k+5) SetFXAttachment(""+k,albmic);
 				break;
-			case 27:
+			case 27: //Sageata in jos
 				for(k=102;k<=127;k=k+5) SetFXAttachment(""+k,albmic);
 				for(k=132;k>=120;k=k-6) SetFXAttachment(""+k,albmic);
 				for(k=128;k>=124;k=k-4) SetFXAttachment(""+k,albmic);
+				break;
+			//Cifre
+			case 28: //1
+				for(k=102;k<=106;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=107;k<=127;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=131;k<=133;k=k+1) SetFXAttachment(""+k,verdemic);
+				break;
+			case 29: //2
+				for(k=102;k<=106;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=108;k<=113;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=117;k<=121;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=126;k<=131;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=132;k<=133;k=k+1) SetFXAttachment(""+k,verdemic);
+				break;	
+			case 30: //3
+				for(k=102;k<=106;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=108;k<=113;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=117;k<=123;k=k+6) SetFXAttachment(""+k,verdemic);
+				for(k=123;k<=128;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=126;k<=132;k=k+6) SetFXAttachment(""+k,verdemic);
+				break;
+			case 31: //4
+				for(k=103;k<=111;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=116;k<=117;k=k+1) SetFXAttachment(""+k,verdemic);
+				for(k=108;k<=133;k=k+5) SetFXAttachment(""+k,verdemic);
+				break;
+			case 32: //5
+				for(k=101;k<=103;k=k+1) SetFXAttachment(""+k,verdemic);
+				for(k=106;k<=111;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=117;k<=123;k=k+6) SetFXAttachment(""+k,verdemic);
+				for(k=128;k<=132;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=126;k<=132;k=k+6) SetFXAttachment(""+k,verdemic);
+				break;
+			case 33: //6
+				for(k=102;k<=108;k=k+6) SetFXAttachment(""+k,verdemic);
+				for(k=106;k<=126;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=117;k<=132;k=k+15) SetFXAttachment(""+k,verdemic);
+				for(k=123;k<=128;k=k+5) SetFXAttachment(""+k,verdemic);
+				break;
+			case 34: //7
+				for(k=101;k<=106;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=102;k<=103;k=k+1) SetFXAttachment(""+k,verdemic);
+				for(k=108;k<=113;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=117;k<=132;k=k+5) SetFXAttachment(""+k,verdemic);
+				break;
+			case 35: //8
+				for(k=102;k<=132;k=k+15) SetFXAttachment(""+k,verdemic);
+				for(k=106;k<=111;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=121;k<=126;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=123;k<=128;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=108;k<=113;k=k+5) SetFXAttachment(""+k,verdemic);
+				break;
+			case 36: //9
+				for(k=102;k<=132;k=k+15) SetFXAttachment(""+k,verdemic);
+				for(k=126;k<=132;k=k+6) SetFXAttachment(""+k,verdemic);
+				for(k=108;k<=128;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=106;k<=111;k=k+5) SetFXAttachment(""+k,verdemic);
+				break;
+			case 37: //10
+				for(k=100;k<=130;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=107;k<=127;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=109;k<=129;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=103;k<=133;k=k+30) SetFXAttachment(""+k,verdemic);
+				break;
+			case 38: //11
+				for(k=101;k<=131;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=104;k<=134;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=105;k<=108;k=k+3) SetFXAttachment(""+k,verdemic);
+				break;
+			case 39: //12
+				for(k=100;k<=130;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=103;k<=107;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=109;k<=114;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=118;k<=122;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=127;k<=132;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=133;k<=134;k=k+1) SetFXAttachment(""+k,verdemic);
+				break;
+			case 40: //13
+				for(k=100;k<=130;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=103;k<=107;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=109;k<=114;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=118;k<=124;k=k+6) SetFXAttachment(""+k,verdemic);
+				for(k=124;k<=129;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=127;k<=133;k=k+6) SetFXAttachment(""+k,verdemic);
+				break;
+			case 41: //14
+				for(k=100;k<=130;k=k+5) SetFXAttachment(""+k,verdemic);
+				for(k=104;k<=112;k=k+4) SetFXAttachment(""+k,verdemic);
+				for(k=117;k<=118;k=k+1) SetFXAttachment(""+k,verdemic);
+				for(k=109;k<=134;k=k+5) SetFXAttachment(""+k,verdemic);
 				break;
 			default:;
 			}
@@ -646,79 +906,110 @@ class Semnal isclass Signal
 	{
 		switch (Str.ToInt(ST.GetString("LIGHTS_COUNT")))
 		{
-		case 1:	//AVARIE
-			SetFXAttachment("70",null);
+		case 1:	
+			if (Str.ToInt(ST.GetString("SIGNAL_MEC_REPEATER"))) //MECANIC REPETITOR
+			{
+				SetFXCoronaTexture(B_GALBEN,null);
+				SetMeshAnimationFrame("default",0,1);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")))
+			{ //MECANIC INTRARE sau IESIRE cu 1i
+				SetFXCoronaTexture(B_ROSU,null);
+				SetMeshAnimationFrame("default",0,1);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_MEC_SHUNT")))
+			{ //MECANIC MANEVRA
+				SetFXCoronaTexture(B_ALB,null);
+				SetMeshAnimationFrame("default",0,1);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_MEC_DISTANT")))
+			{ //MECANIC PREVESTITOR 2i
+				SetFXCoronaTexture(B_GALBEN,null);
+				SetMeshAnimationFrame("default",0,1);
+			}
+			else //AVARIE
+				SetFXAttachment(B_ROSU_AV,null);
+			break;
 		case 2:
-			if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
+			if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")))
+			{ //SSSR 2
+				SetFXAttachment(B_ROSU,null);
+				SetFXAttachment(B_ALB,null);
+				SetFXAttachment(B_CHEMARE,null);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+			{ //TMV 2
+				SetFXAttachment(B_ROSU,null);
+				SetFXAttachment(B_GALBEN,null);
+				SetFXAttachment(B_ALB,null);
+				SetFXAttachment(B_CHEMARE,null);
+				SetFXAttachment(B_LINIE,null);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
 			{ //MANEVRA
-				SetFXAttachment("90",null);
-				SetFXAttachment("91",null);
+				SetFXAttachment(B_ALBASTRU,null);
+				SetFXAttachment(B_ALB,null);
 			}
-			else if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
-			{ //SSSR 2 sau TMV 2
-				SetFXAttachment("0",null);
-				SetFXAttachment("91",null);
-				SetFXAttachment("92",null);
-			}
-			else
+			else if (Str.ToInt(ST.GetString("SIGNAL_DTV_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_DISTANT")))
 			{ //PREVESTITOR
-				SetFXAttachment("1",null);
-				SetFXAttachment("2",null);
-				SetFXAttachment("3",null);
-				SetFXAttachment("4",null);
-				SetFXAttachment("5",null);
-				SetFXAttachment("6",null);
+				SetFXAttachment(B_GALBEN,null);
+				SetFXAttachment(B_VERDE,null);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")))
+			{ //MECANIC INTRARE sau IESIRE cu 2i
+				SetFXCoronaTexture(B_ROSU,null);
+				SetFXCoronaTexture(B_GALBEN,null);
+				SetMeshAnimationFrame("default",60,1);
+			}
+			else if (Str.ToInt(ST.GetString("SIGNAL_MEC_DISTANT")))
+			{ //MECANIC PREVESTITOR 3i
+				SetFXCoronaTexture(B_GALBEN,null);
+				SetFXCoronaTexture(B_GAL_JOS,null);
+				SetMeshAnimationFrame("default",0,2);
+				SetMeshAnimationFrame("paleta",60,1);
 			}
 			break;
-		case 3:	//BLA sau SSSR 3 sau TMV 3
-			SetFXAttachment("0",null);
-			SetFXAttachment("1",null);
-			SetFXAttachment("2",null);
-			SetFXAttachment("3",null);
-			SetFXAttachment("4",null);
-			SetFXAttachment("5",null);
-			SetFXAttachment("6",null);
-			break;
-		case 4:
-			if (Str.ToInt(ST.GetString("SIGNAL_DTV_FAULT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_FAULT")))
-			{ //BLA+AVARIE
-				SetFXAttachment("0",null);
-				SetFXAttachment("1",null);
-				SetFXAttachment("2",null);
-				SetFXAttachment("3",null);
-				SetFXAttachment("4",null);
-				SetFXAttachment("5",null);
-				SetFXAttachment("6",null);
-				SetFXAttachment("7",null);
-				SetFXAttachment("70",null);
+		case 3:	
+			if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")))
+			{ //MECANIC INTRARE sau IESIRE cu 3i
+				SetFXCoronaTexture(B_ROSU,null);
+				SetFXCoronaTexture(B_GALBEN,null);
+				SetFXCoronaTexture(B_GAL_JOS,null);
+				SetMeshAnimationFrame("default",60,1);
+				SetMeshAnimationFrame("paleta",0,2);
 			}
 			else
-			{ //SSSR 4 sau TMV 4
-				SetFXAttachment("0",null);
-				SetFXAttachment("1",null);
-				SetFXAttachment("2",null);
-				SetFXAttachment("3",null);
-				SetFXAttachment("4",null);
-				SetFXAttachment("5",null);
-				SetFXAttachment("6",null);
-				SetFXAttachment("7",null);
-				SetFXAttachment("91",null);
-				SetFXAttachment("92",null);
-				SetFXAttachment("80",null);
+			{ //BLA sau SSSR 3 sau TMV 3
+				SetFXAttachment(B_ROSU,null);
+				SetFXAttachment(B_GALBEN,null);
+				SetFXAttachment(B_VERDE,null);
+				if (Str.ToInt(ST.GetString("SIGNAL_DTV_FAULT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_FAULT")))
+					SetFXAttachment(B_ROSU_AV,null);
+				if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
+					SetFXAttachment(B_ALB,null);
+				if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+					SetFXAttachment(B_LINIE,null);
 			}
+			break;
+		case 4:	//SSSR 4
+			SetFXAttachment(B_ROSU,null);
+			SetFXAttachment(B_GALBEN,null);
+			SetFXAttachment(B_VERDE,null);
+			SetFXAttachment(B_GAL_JOS,null);
+			if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")))
+				SetFXAttachment(B_ALB,null);
+			SetFXAttachment(B_LINIE,null);
+			SetFXAttachment(B_CHEMARE,null);
 			break;
 		case 5: //SSSR 5 sau TMV 5
-			SetFXAttachment("0",null);
-			SetFXAttachment("1",null);
-			SetFXAttachment("2",null);
-			SetFXAttachment("3",null);
-			SetFXAttachment("4",null);
-			SetFXAttachment("5",null);
-			SetFXAttachment("6",null);
-			SetFXAttachment("7",null);
-			SetFXAttachment("91",null);
-			SetFXAttachment("92",null);
-			SetFXAttachment("80",null);
+			SetFXAttachment(B_ROSU,null);
+			SetFXAttachment(B_GALBEN,null);
+			SetFXAttachment(B_VERDE,null);
+			if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")))
+				SetFXAttachment(B_GAL_JOS,null);
+			SetFXAttachment(B_ALB,null);
+			SetFXAttachment(B_LINIE,null);
+			SetFXAttachment(B_CHEMARE,null);
 			break;
 		case 13: //REPETITOR
 			SetFXAttachment("50",null);
@@ -797,47 +1088,46 @@ class Semnal isclass Signal
 						direction=0;
 						Lightup_Direction_Marker();
 					}
-					SetFXAttachment("0",rosu);
+					SetFXAttachment(B_ROSU,rosu);
 				}
 			}
 			else
 			{
 				if (!active_shunt)
 				{
-					SetSignalState(AUTOMATIC,"");
 					restriction=FindLimit();
 					switch (next_aspect)
 					{
-					case 0:
+					case S_ROSU:
 						switch (restriction)
 						{
-						case 4:
+						case R_T20:
 							this_aspect=101;
-							next_restrict=0;
+							next_restrict=R_VS;
 							break;
-						case 5:
+						case R_T30:
 							this_aspect=102;
-							next_restrict=0;
+							next_restrict=R_VS;
 							break;
-						case 6:
+						case R_T60:
 							this_aspect=103;
-							next_restrict=0;
+							next_restrict=R_VS;
 							break;
-						case 7:
+						case R_T80:
 							this_aspect=104;
-							next_restrict=0;
+							next_restrict=R_VS;
 							break;
-						case 8:
+						case R_T90:
 							this_aspect=105;
-							next_restrict=0;
+							next_restrict=R_VS;
 							break;
-						case 9:
+						case R_T100:
 							this_aspect=106;
-							next_restrict=0;
+							next_restrict=R_VS;
 							break;
-						case 10:
-							this_aspect=100;
-							next_restrict=0;
+						case R_TVS:
+							this_aspect=T_GALBEN;
+							next_restrict=R_VS;
 							break;
 						default:;
 						}
@@ -847,31 +1137,31 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 10:
-                             this_aspect=107;
-                             next_restrict=0;
+                             this_aspect=T_VER_CL;
+                             next_restrict=R_VS;
                              break;
 						default:;
 						}
@@ -881,31 +1171,31 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 10:
-                             this_aspect=114;
-                             next_restrict=0;
+                             this_aspect=T_VERDE;
+                             next_restrict=R_VS;
                              break;
 						default:;
 						}
@@ -915,31 +1205,31 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 10:
-                             this_aspect=114;
-                             next_restrict=0;
+                             this_aspect=T_VERDE;
+                             next_restrict=R_VS;
                              break;
 						default:;
 						}
@@ -949,65 +1239,31 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
 							 this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 10:
-                             this_aspect=114;
-                             next_restrict=0;
-                             break;
-						default:;
-						}
-						break;
-					case 5:
-						switch (restriction)
-						{
-						case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-						case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-						case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-						case 7:
-                             this_aspect=118;
-                             next_restrict=0;
-                             break;
-						case 8:
-                             this_aspect=119;
-                             next_restrict=0;
-                             break;
-						case 9:
-                             this_aspect=120;
-                             next_restrict=0;
-                             break;
-						case 10:
-                             this_aspect=114;
-                             next_restrict=0;
+                             this_aspect=T_VERDE;
+                             next_restrict=R_VS;
                              break;
 						default:;
 						}
@@ -1017,31 +1273,31 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 10:
-                             this_aspect=114;
-                             next_restrict=0;
+                             this_aspect=T_VERDE;
+                             next_restrict=R_VS;
                              break;
 						default:;
 						}
@@ -1051,11 +1307,11 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=110;
@@ -1074,7 +1330,7 @@ class Semnal isclass Signal
                              next_restrict=5;
                              break;
 						case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=5;
                              break;
 						default:;
@@ -1085,11 +1341,11 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=110;
@@ -1108,143 +1364,7 @@ class Semnal isclass Signal
                              next_restrict=5;
                              break;
 						case 10:
-                             this_aspect=107;
-                             next_restrict=5;
-                             break;
-						default:;
-						}
-						break;
-					case 9:
-						switch (restriction)
-						{
-						case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-						case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-						case 6:
-                             this_aspect=110;
-                             next_restrict=5;
-                             break;
-						case 7:
-                             this_aspect=111;
-                             next_restrict=5;
-                             break;
-						case 8:
-                             this_aspect=112;
-                             next_restrict=5;
-                             break;
-						case 9:
-                             this_aspect=113;
-                             next_restrict=5;
-                             break;
-						case 10:
-                             this_aspect=107;
-                             next_restrict=5;
-                             break;
-						default:;
-						}
-						break;
-					case 10:
-						switch (restriction)
-						{
-						case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-						case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-						case 6:
-                             this_aspect=110;
-                             next_restrict=5;
-                             break;
-						case 7:
-                             this_aspect=111;
-                             next_restrict=5;
-                             break;
-						case 8:
-                             this_aspect=112;
-                             next_restrict=5;
-                             break;
-						case 9:
-                             this_aspect=113;
-                             next_restrict=5;
-                             break;
-						case 10:
-                             this_aspect=107;
-                             next_restrict=5;
-                             break;
-						default:;
-						}
-						break;
-					case 11:
-						switch (restriction)
-						{
-						case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-						case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-						case 6:
-                             this_aspect=110;
-                             next_restrict=5;
-                             break;
-						case 7:
-                             this_aspect=111;
-                             next_restrict=5;
-                             break;
-						case 8:
-                             this_aspect=112;
-                             next_restrict=5;
-                             break;
-						case 9:
-                             this_aspect=113;
-                             next_restrict=5;
-                             break;
-						case 10:
-                             this_aspect=107;
-                             next_restrict=5;
-                             break;
-						default:;
-						}
-						break;
-					case 12:
-						switch (restriction)
-						{
-						case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-						case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-						case 6:
-                             this_aspect=110;
-                             next_restrict=5;
-                             break;
-						case 7:
-                             this_aspect=111;
-                             next_restrict=5;
-                             break;
-						case 8:
-                             this_aspect=112;
-                             next_restrict=5;
-                             break;
-						case 9:
-                             this_aspect=113;
-                             next_restrict=5;
-                             break;
-						case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=5;
                              break;
 						default:;
@@ -1255,15 +1375,15 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=111;
@@ -1278,7 +1398,7 @@ class Semnal isclass Signal
                              next_restrict=6;
                              break;
 						case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=6;
                              break;
 						default:;
@@ -1289,15 +1409,15 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
                              this_aspect=111;
@@ -1312,382 +1432,131 @@ class Semnal isclass Signal
                              next_restrict=6;
                              break;
 						case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=6;
                              break;
 						default:;
 						}
 						break;
-					case 15:
+					case 19:
 						switch (restriction)
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 7:
-                             this_aspect=111;
-                             next_restrict=6;
+                             this_aspect=118;
+                             next_restrict=R_VS;
                              break;
 						case 8:
-                             this_aspect=112;
-                             next_restrict=6;
+                             this_aspect=119;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=113;
-                             next_restrict=6;
+                             next_restrict=8;
                              break;
 						case 10:
-                             this_aspect=107;
-                             next_restrict=6;
+                             this_aspect=T_VER_CL;
+                             next_restrict=8;
                              break;
 						default:;
 						}
 						break;
-					case 16:
+					case 20:
 						switch (restriction)
 						{
-                   case 4:
+						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 5:
+						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 6:
+						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 7:
-                             this_aspect=111;
-                             next_restrict=6;
-                             break;
-                   case 8:
-                             this_aspect=112;
-                             next_restrict=6;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=6;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=6;
-                             break;
-                   default:;
-                }
-                break;
-               case 17:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=111;
-                             next_restrict=6;
-                             break;
-                   case 8:
-                             this_aspect=112;
-                             next_restrict=6;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=6;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=6;
-                             break;
-                   default:;
-                }
-                break;
-               case 18:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=111;
-                             next_restrict=6;
-                             break;
-                   case 8:
-                             this_aspect=112;
-                             next_restrict=6;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=6;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=6;
-                             break;
-                   default:;
-                }
-                break;
-               case 19:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
+						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 8:
+						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 9:
+						case 9:
                              this_aspect=113;
                              next_restrict=8;
                              break;
-                   case 10:
-                             this_aspect=107;
+						case 10:
+                             this_aspect=T_VER_CL;
                              next_restrict=8;
                              break;
-                   default:;
-                }
-                break;
-               case 20:
-                switch (restriction) {
-                   case 4:
+						default:;
+						}
+						break;
+					case S_ROSU_AV:
+						this_aspect=T_GALBEN;
+						next_restrict=0;
+						break;
+					case S_ALB:
+						this_aspect=T_VER_CL_20;
+						next_restrict=R_T20;
+						break;
+					case S_CHEMARE:
+						this_aspect=T_GALBEN_20;
+						next_restrict=R_T20;
+						break; 
+					case 100:
+						switch (restriction)
+						{
+						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 5:
+						case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 6:
+						case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 7:
+						case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 8:
+						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=8;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=8;
-                             break;
-                   default:;
-                }
-                break;
-               case 21:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=118;
-                             next_restrict=0;
-                             break;
-                   case 8:
-                             this_aspect=119;
-                             next_restrict=0;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=8;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=8;
-                             break;
-                   default:;
-                }
-                break;
-               case 22:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=118;
-                             next_restrict=0;
-                             break;
-                   case 8:
-                             this_aspect=119;
-                             next_restrict=0;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=8;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=8;
-                             break;
-                   default:;
-                }
-                break;
-               case 23:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=118;
-                             next_restrict=0;
-                             break;
-                   case 8:
-                             this_aspect=119;
-                             next_restrict=0;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=8;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=8;
-                             break;
-                   default:;
-                }
-                break;
-               case 24:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=118;
-                             next_restrict=0;
-                             break;
-                   case 8:
-                             this_aspect=119;
-                             next_restrict=0;
-                             break;
-                   case 9:
-                             this_aspect=113;
-                             next_restrict=8;
-                             break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=8;
-                             break;
-                   default:;
-                }
-                break;
-               case 100:
-                switch (restriction) {
-                   case 4:
-                             this_aspect=115;
-                             next_restrict=0;
-                             break;
-                   case 5:
-                             this_aspect=116;
-                             next_restrict=0;
-                             break;
-                   case 6:
-                             this_aspect=117;
-                             next_restrict=0;
-                             break;
-                   case 7:
-                             this_aspect=118;
-                             next_restrict=0;
-                             break;
-                   case 8:
-                             this_aspect=119;
-                             next_restrict=0;
-                             break;
-                   case 9:
+						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 10:
-                             this_aspect=107;
-                             next_restrict=0;
+						case 10:
+                             this_aspect=T_VER_CL;
+                             next_restrict=R_VS;
                              break;
-                   default:;
-                }
-                break;
+						default:;
+						}
+						break;
                case 101:
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=109;
@@ -1710,7 +1579,7 @@ class Semnal isclass Signal
                              next_restrict=4;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=4;
                              break;
                    default:;
@@ -1720,11 +1589,11 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=110;
@@ -1743,7 +1612,7 @@ class Semnal isclass Signal
                              next_restrict=5;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=5;
                              break;
                    default:;
@@ -1753,15 +1622,15 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=111;
@@ -1776,7 +1645,7 @@ class Semnal isclass Signal
                              next_restrict=6;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=6;
                              break;
                    default:;
@@ -1786,19 +1655,19 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=112;
@@ -1809,7 +1678,7 @@ class Semnal isclass Signal
                              next_restrict=7;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=7;
                              break;
                    default:;
@@ -1819,30 +1688,30 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=113;
                              next_restrict=8;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=8;
                              break;
                    default:;
@@ -1852,30 +1721,30 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=9;
                              break;
                    default:;
@@ -1885,31 +1754,31 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 10:
-                             this_aspect=114;
-                             next_restrict=0;
+                             this_aspect=T_VERDE;
+                             next_restrict=R_VS;
                              break;
                    default:;
                 }
@@ -1918,7 +1787,7 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=109;
@@ -1941,7 +1810,7 @@ class Semnal isclass Signal
                              next_restrict=4;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=4;
                              break;
                    default:;
@@ -1951,11 +1820,11 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=110;
@@ -1974,7 +1843,7 @@ class Semnal isclass Signal
                              next_restrict=5;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=5;
                              break;
                    default:;
@@ -1984,15 +1853,15 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=111;
@@ -2007,7 +1876,7 @@ class Semnal isclass Signal
                              next_restrict=6;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=6;
                              break;
                    default:;
@@ -2017,19 +1886,19 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=112;
@@ -2040,7 +1909,7 @@ class Semnal isclass Signal
                              next_restrict=7;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=7;
                              break;
                    default:;
@@ -2050,30 +1919,30 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=113;
                              next_restrict=8;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=8;
                              break;
                    default:;
@@ -2083,30 +1952,30 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=9;
                              break;
                    default:;
@@ -2116,31 +1985,31 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 10:
-                             this_aspect=114;
-                             next_restrict=0;
+                             this_aspect=T_VERDE;
+                             next_restrict=R_VS;
                              break;
                    default:;
                 }
@@ -2149,7 +2018,7 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=109;
@@ -2172,7 +2041,7 @@ class Semnal isclass Signal
                              next_restrict=4;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=4;
                              break;
                    default:;
@@ -2182,11 +2051,11 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=110;
@@ -2205,7 +2074,7 @@ class Semnal isclass Signal
                              next_restrict=5;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=5;
                              break;
                    default:;
@@ -2215,15 +2084,15 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=111;
@@ -2238,7 +2107,7 @@ class Semnal isclass Signal
                              next_restrict=6;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=6;
                              break;
                    default:;
@@ -2248,19 +2117,19 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=112;
@@ -2271,7 +2140,7 @@ class Semnal isclass Signal
                              next_restrict=7;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=7;
                              break;
                    default:;
@@ -2281,30 +2150,30 @@ class Semnal isclass Signal
                 switch (restriction) {
                    case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 9:
                              this_aspect=113;
                              next_restrict=8;
                              break;
                    case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=8;
                              break;
                    default:;
@@ -2315,30 +2184,30 @@ class Semnal isclass Signal
 						{
 						case 4:
                              this_aspect=115;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 5:
                              this_aspect=116;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 6:
                              this_aspect=117;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
                    case 7:
                              this_aspect=118;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
-                   case 8:
+						case 8:
                              this_aspect=119;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 9:
                              this_aspect=120;
-                             next_restrict=0;
+                             next_restrict=R_VS;
                              break;
 						case 10:
-                             this_aspect=107;
+                             this_aspect=T_VER_CL;
                              next_restrict=9;
                              break;
 						default:;
@@ -2347,6 +2216,18 @@ class Semnal isclass Signal
 					default:;
 					}                                                                             
              
+					//Daca e restrictie de manevra sau de chemare
+					if (restriction==R_MANEVRA)
+					{
+						this_aspect=S_ALB;
+						restriction=R_T20;
+					}
+					if (restriction==R_CHEMARE)
+					{					
+						this_aspect=S_CHEMARE;
+						restriction=R_T20;
+					}
+			 
 					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER")))
 					{
 						direction=FindDirection();
@@ -2368,13 +2249,35 @@ class Semnal isclass Signal
 							TMV_this_limit(0);
 							TMV_next_limit(0);
 						}
-						if (this_aspect>=100 and this_aspect<=106)
-							SetFXAttachment("1",galben);
-						if (this_aspect>=107 and this_aspect<=113)
-							SetFXAttachment("5",verdeclipitor);
-						if (this_aspect>=114 and this_aspect<=120)
-							SetFXAttachment("2",verde);
-						if (Str.ToInt(ST.GetString("HAS_BAR"))!=2 and restriction!=10)
+						
+						//Daca este activata iesirea pe linia din stanga
+						if (current_config_index!=-1)
+							if (Str.ToInt(rules[current_config_index].exit_left))
+								SetFXAttachment(B_LINIE,alblinie);
+						
+						if (this_aspect>=T_GALBEN and this_aspect<=T_GALBEN_100)
+							SetFXAttachment(B_GALBEN,galben);
+						if (this_aspect>=T_VER_CL and this_aspect<=T_VER_CL_100)
+							if (Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2) //Daca e TMV 2
+								SetFXAttachment(B_GALBEN,galben);
+							else
+								SetFXAttachment(B_VERDE,verdeclipitor);
+						if (this_aspect>=T_VERDE and this_aspect<=T_VERDE_100)
+							if (Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2) //Daca e TMV 2
+								SetFXAttachment(B_GALBEN,galben);
+							else
+								SetFXAttachment(B_VERDE,verde);
+								
+						if (this_aspect==S_ALB)
+						{
+							SetFXAttachment(B_ALB,alb);
+						}
+						if (this_aspect==S_CHEMARE)
+						{
+							SetFXAttachment(B_CHEMARE,albclipitor);
+							SetFXAttachment(B_ROSU,rosu);
+						}
+						if (Str.ToInt(ST.GetString("HAS_BAR"))!=2 and restriction!=R_TVS)
 						{
 							TMV_this_limit(restriction);
 						}
@@ -2390,11 +2293,11 @@ class Semnal isclass Signal
 		{
 			if (GetSignalState()==RED) 
 			{
-				this_aspect=0;
+				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
 				{
 					NotifySubscribers();
-					memo_aspect=0;
+					memo_aspect=S_ROSU;
 					Lights_Off();
 					if (Str.ToInt(ST.GetString("HAS_BAR"))==1) 
 						TMV_this_limit(0);
@@ -2405,199 +2308,159 @@ class Semnal isclass Signal
 						TMV_this_limit(0);
 						TMV_next_limit(0);
 					}
-					SetFXAttachment("0",rosu);
+					SetFXAttachment(B_ROSU,rosu);
 				}
 			}
 			else
 			{  
 				if(!active_fault)
 				{
-					SetSignalState(AUTOMATIC,"");
+					
 					switch (next_aspect)
 					{
-					case 0:
-						this_aspect=100;
-						next_restrict=0;
+					case S_ROSU:
+						this_aspect=T_GALBEN;
+						next_restrict=R_VS;
 						break;
-					case 1:
-						this_aspect=107;
-						next_restrict=0;
+					case S_GALBEN:
+						this_aspect=T_VER_CL;
+						next_restrict=R_VS;
 						break;
-					case 2:
-						this_aspect=114;
-						next_restrict=0;
+					case S_VERDE:
+						this_aspect=T_VERDE;
+						next_restrict=R_VS;
 						break;
-					case 3:
-						this_aspect=114;
-						next_restrict=0;
+					case S_GAL_CL:
+						this_aspect=T_VERDE;
+						next_restrict=R_VS;
 						break;
-					case 4:
-						this_aspect=114;
-						next_restrict=0;
+					case S_GAL_DCL:
+						this_aspect=T_VERDE;
+						next_restrict=R_VS;
 						break;
-					case 5:
-						this_aspect=114;
-						next_restrict=0;
+					case S_VER_CL:
+						this_aspect=T_VERDE;
+						next_restrict=R_VS;
 						break;
-					case 6:
-						this_aspect=114;
-						next_restrict=0;
-						break;
-					case 7:
-						this_aspect=107;
+					case S_GAL_GAL:
+						this_aspect=T_VER_CL;
 						next_restrict=5;
 						break;
-					case 8:
-						this_aspect=107;
+					case S_VER_GAL:
+						this_aspect=T_VER_CL;
 						next_restrict=5;
-						break;
-					case 9:
-						this_aspect=107;
-						next_restrict=5;
-						break;
-					case 10:
-						this_aspect=107;
-						next_restrict=5;
-						break;
-					case 11:
-						this_aspect=107;
-						next_restrict=5;
-						break;
-					case 12:
-						this_aspect=107;
-						next_restrict=5;
-						break;
-					case 13:
-						this_aspect=107;
+						break;				
+					case S_GAL_GAL_60:
+						this_aspect=T_VER_CL;
 						next_restrict=6;
 						break;
-					case 14:
-						this_aspect=107;
+					case S_VER_GAL_60:
+						this_aspect=T_VER_CL;
 						next_restrict=6;
 						break;
-					case 15:
-						this_aspect=107;
-						next_restrict=6;
-						break;
-					case 16:
-						this_aspect=107;
-						next_restrict=6;
-						break;
-					case 17:
-						this_aspect=107;
-						next_restrict=6;
-						break;
-					case 18:
-						this_aspect=107;
-						next_restrict=6;
-						break;
-					case 19:
-						this_aspect=107;
+					case S_GAL_GAL_90:
+						this_aspect=T_VER_CL;
 						next_restrict=8;
 						break;
-					case 20:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 21:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 22:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 23:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 24:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 100:
-					this_aspect=107;
-					next_restrict=0;
-					break;
-					case 101:
-					this_aspect=107;
-					next_restrict=4;
-					break;
-					case 102:
-					this_aspect=107;
-					next_restrict=5;
-					break;
-					case 103:
-					this_aspect=107;
-					next_restrict=6;
-					break;
-					case 104:
-					this_aspect=107;
-					next_restrict=7;
-					break;
-					case 105:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 106:
-					this_aspect=107;
-					next_restrict=9;
-					break;
-					case 107:
-					this_aspect=114;
-					next_restrict=0;
-					break;
-					case 108:
-					this_aspect=107;
-					next_restrict=4;
-					break;
-					case 109:
-					this_aspect=107;
-					next_restrict=5;
-					break;
-					case 110:
-					this_aspect=107;
-					next_restrict=6;
-					break;
-					case 111:
-					this_aspect=107;
-					next_restrict=7;
-					break;
-					case 112:
-					this_aspect=107;
-					next_restrict=8;
-					break;
-					case 113:
-					this_aspect=107;
-					next_restrict=9;
-					break;
-					case 114:
-					this_aspect=114;
-					next_restrict=0;
-					break;
-					case 115:
-					this_aspect=107;
-					next_restrict=4;
-					break;
-					case 116:
-					this_aspect=107;
-					next_restrict=5;
-					break;
-					case 117:
-					this_aspect=107;
-					next_restrict=6;
-					break;
-					case 118:
-					this_aspect=107;
-					next_restrict=7;
-					break;
-					case 119:
-						this_aspect=107;
+					case S_VER_GAL_90:
+						this_aspect=T_VER_CL;
 						next_restrict=8;
 						break;
-					case 120:
-						this_aspect=107;
+					case S_ROSU_AV:
+						this_aspect=T_GALBEN;
+						next_restrict=0;
+						break;
+					case S_ALB:
+						this_aspect=T_VER_CL_20;
+						next_restrict=R_T20;
+						break;
+					case S_CHEMARE:
+						this_aspect=T_GALBEN_20;
+						next_restrict=R_T20;
+						break; 
+					case T_GALBEN:
+						this_aspect=T_VER_CL;
+						next_restrict=R_VS;
+						break;
+					case T_GALBEN_20:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T20;
+						break;
+					case T_GALBEN_30:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T30;
+						break;
+					case T_GALBEN_60:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T60;
+						break;
+					case T_GALBEN_80:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T80;
+						break;
+					case T_GALBEN_90:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T90;
+						break;
+					case T_GALBEN_100:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T100;
+						break;
+					case T_VER_CL:
+						this_aspect=T_VERDE;
+						next_restrict=R_VS;
+						break;
+					case T_VER_CL_20:
+						this_aspect=T_VER_CL;
+						next_restrict=4;
+						break;
+					case T_VER_CL_30:
+						this_aspect=T_VER_CL;
+						next_restrict=5;
+						break;
+					case T_VER_CL_60:
+						this_aspect=T_VER_CL;
+						next_restrict=6;
+						break;
+					case T_VER_CL_80:
+						this_aspect=T_VER_CL;
+						next_restrict=7;
+						break;
+					case T_VER_CL_90:
+						this_aspect=T_VER_CL;
+						next_restrict=8;
+						break;
+					case T_VER_CL_100:
+						this_aspect=T_VER_CL;
 						next_restrict=9;
+						break;
+					case T_VERDE:
+						this_aspect=T_VERDE;
+						next_restrict=R_VS;
+						break;
+					case T_VERDE_20:
+						this_aspect=T_VER_CL;
+						next_restrict=4;
+						break;
+					case T_VERDE_30:
+						this_aspect=T_VER_CL;
+						next_restrict=5;
+						break;
+					case T_VERDE_60:
+						this_aspect=T_VER_CL;
+						next_restrict=6;
+						break;
+					case T_VERDE_80:
+						this_aspect=T_VER_CL;
+						next_restrict=7;
+						break;
+					case T_VERDE_90:
+						this_aspect=T_VER_CL;
+						next_restrict=8;
+						break;
+					case T_VERDE_100:
+						this_aspect=T_VER_CL;
+						next_restrict=R_T100;
 						break;
 					default:;
 					}                                                                             
@@ -2610,12 +2473,12 @@ class Semnal isclass Signal
 						Lights_Off();
 						if (Str.ToInt(ST.GetString("HAS_BAR"))==2)
 							TMV_next_limit(0);
-						if (this_aspect>=100 and this_aspect<=106)
-							SetFXAttachment("1",galben);
-						if (this_aspect>=107 and this_aspect<=113)
-							SetFXAttachment("5",verdeclipitor);
-						if (this_aspect>=114 and this_aspect<=120)
-							SetFXAttachment("2",verde);
+						if (this_aspect>=T_GALBEN and this_aspect<=T_GALBEN_100)
+							SetFXAttachment(B_GALBEN,galben);
+						if (this_aspect>=T_VER_CL and this_aspect<=T_VER_CL_100)
+							SetFXAttachment(B_VERDE,verdeclipitor);
+						if (this_aspect>=T_VERDE and this_aspect<=T_VERDE_100)
+							SetFXAttachment(B_VERDE,verde);
 						if (Str.ToInt(ST.GetString("HAS_BAR"))==2)
 							TMV_next_limit(next_restrict);
 					}
@@ -2629,187 +2492,147 @@ class Semnal isclass Signal
 			switch (next_aspect)
 			{
 			case 0:
-				 this_aspect=100;
-				 next_restrict=0;
+				 this_aspect=T_GALBEN;
+				 next_restrict=R_VS;
 				 break;
 			case 1:
-				 this_aspect=107;
-				 next_restrict=0;
+				 this_aspect=T_VER_CL;
+				 next_restrict=R_VS;
 				 break;
 			   case 2:
-				 this_aspect=114;
-				 next_restrict=0;
+				 this_aspect=T_VERDE;
+				 next_restrict=R_VS;
 				 break;
 			   case 3:
-				 this_aspect=114;
-				 next_restrict=0;
+				 this_aspect=T_VERDE;
+				 next_restrict=R_VS;
 				 break;
 			   case 4:
-				 this_aspect=114;
-				 next_restrict=0;
-				 break;
-			   case 5:
-				 this_aspect=114;
-				 next_restrict=0;
+				 this_aspect=T_VERDE;
+				 next_restrict=R_VS;
 				 break;
 			   case 6:
-				 this_aspect=114;
-				 next_restrict=0;
+				 this_aspect=T_VERDE;
+				 next_restrict=R_VS;
 				 break;
 			   case 7:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=5;
 				 break;
 			   case 8:
-				 this_aspect=107;
-				 next_restrict=5;
-				 break;
-			   case 9:
-				 this_aspect=107;
-				 next_restrict=5;
-				 break;
-			   case 10:
-				 this_aspect=107;
-				 next_restrict=5;
-				 break;
-			   case 11:
-				 this_aspect=107;
-				 next_restrict=5;
-				 break;
-			   case 12:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=5;
 				 break;
 			   case 13:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=6;
 				 break;
 			   case 14:
-				 this_aspect=107;
-				 next_restrict=6;
-				 break;
-			   case 15:
-				 this_aspect=107;
-				 next_restrict=6;
-				 break;
-			   case 16:
-				 this_aspect=107;
-				 next_restrict=6;
-				 break;
-			   case 17:
-				 this_aspect=107;
-				 next_restrict=6;
-				 break;
-			   case 18:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=6;
 				 break;
 			   case 19:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=8;
 				 break;
 			   case 20:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=8;
 				 break;
-			   case 21:
-				 this_aspect=107;
-				 next_restrict=8;
-				 break;
-			   case 22:
-				 this_aspect=107;
-				 next_restrict=8;
-				 break;
-			   case 23:
-				 this_aspect=107;
-				 next_restrict=8;
-				 break;
-			   case 24:
-				 this_aspect=107;
-				 next_restrict=8;
-				 break;
-			   case 100:
-				 this_aspect=107;
-				 next_restrict=0;
+			case S_ROSU_AV:
+				this_aspect=T_GALBEN;
+				next_restrict=0;
+				break;
+			case S_ALB:
+				this_aspect=T_VER_CL_20;
+				next_restrict=R_T20;
+				break;
+			case S_CHEMARE:
+				this_aspect=T_GALBEN_20;
+				next_restrict=R_T20;
+				break; 
+			case 100:
+				 this_aspect=T_VER_CL;
+				 next_restrict=R_VS;
 				 break;
 			   case 101:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=4;
 				 break;
 			   case 102:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=5;
 				 break;
 			   case 103:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=6;
 				 break;
 			   case 104:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=7;
 				 break;
 			   case 105:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=8;
 				 break;
 			   case 106:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=9;
 				 break;
 			   case 107:
-				 this_aspect=114;
-				 next_restrict=0;
+				 this_aspect=T_VERDE;
+				 next_restrict=R_VS;
 				 break;
 			   case 108:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=4;
 				 break;
 			   case 109:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=5;
 				 break;
 			   case 110:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=6;
 				 break;
 			   case 111:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=7;
 				 break;
 			   case 112:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=8;
 				 break;
 			   case 113:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=9;
 				 break;
 			   case 114:
-				 this_aspect=114;
-				 next_restrict=0;
+				 this_aspect=T_VERDE;
+				 next_restrict=R_VS;
 				 break;
 			   case 115:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=4;
 				 break;
 			   case 116:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=5;
 				 break;
 			   case 117:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=6;
 				 break;
 			   case 118:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=7;
 				 break;
 			   case 119:
-				 this_aspect=107;
+				 this_aspect=T_VER_CL;
 				 next_restrict=8;
 				 break;
 			case 120:
-				this_aspect=107;
+				this_aspect=T_VER_CL;
 				next_restrict=9;
 				break;
 			default:;
@@ -2823,12 +2646,12 @@ class Semnal isclass Signal
 				Lights_Off();
 				if (Str.ToInt(ST.GetString("HAS_BAR"))==2)
 					TMV_next_limit(0);
-				if (this_aspect>=100 and this_aspect<=106)
-					SetFXAttachment("1",galben);
-				if (this_aspect>=107 and this_aspect<=113)
-					SetFXAttachment("5",verdeclipitor);
-				if (this_aspect>=114 and this_aspect<=120)
-					SetFXAttachment("2",verde);
+				if (this_aspect>=T_GALBEN and this_aspect<=T_GALBEN_100)
+					SetFXAttachment(B_GALBEN,galben);
+				if (this_aspect>=T_VER_CL and this_aspect<=T_VER_CL_100)
+					SetFXAttachment(B_VERDE,verdeclipitor);
+				if (this_aspect>=T_VERDE and this_aspect<=T_VERDE_100)
+					SetFXAttachment(B_VERDE,verde);
 				if (Str.ToInt(ST.GetString("HAS_BAR"))==2)
 					TMV_next_limit(next_restrict);
 			}
@@ -2845,7 +2668,7 @@ class Semnal isclass Signal
 				Lights_Off();
 				
 				//rosu
-				if (this_aspect==0)
+				if (this_aspect==S_ROSU)
 				{
 					SetFXAttachment("50",albmic);
 					SetFXAttachment("51",albmic);
@@ -2857,7 +2680,7 @@ class Semnal isclass Signal
 				}
 				
 				//galben
-				if (this_aspect==1 or this_aspect>=3 and this_aspect<=113) 
+				if (this_aspect==S_GALBEN or this_aspect>=S_GAL_CL and this_aspect<=T_VER_CL_100) 
 				{
 					SetFXAttachment("50",albmic);
 					SetFXAttachment("51",albmic);
@@ -2869,7 +2692,7 @@ class Semnal isclass Signal
 				}
 				
 				//verde
-				if (this_aspect==2 or this_aspect>=114)
+				if (this_aspect==S_VERDE or this_aspect>=T_VERDE)
 				{
 					SetFXAttachment("50",albmic);
 					SetFXAttachment("51",albmic);
@@ -2894,8 +2717,7 @@ class Semnal isclass Signal
 					memo_aspect=this_aspect;
 					NotifySubscribers();
 					Lights_Off();
-					SetFXAttachment("90",albastru);
-					SetSignalState(AUTOMATIC,"Manevra interzisa dincolo de semnal!");
+					SetFXAttachment(B_ALBASTRU,albastru);
 				}
 			}
 			
@@ -2908,18 +2730,17 @@ class Semnal isclass Signal
 					memo_aspect=this_aspect;
 					NotifySubscribers();
 					Lights_Off();
-					SetFXAttachment("90",albastru);
-					SetSignalState(AUTOMATIC,"Manevra interzisa dincolo de semnal!");
+					SetFXAttachment(B_ALBASTRU,albastru);
 				}
 			}
 			
 			//Daca e activa manevra si e liber pune alb
 			if (active_shunt and !(GetSignalState()==RED))
 			{
-				if (this_aspect!=91)
+				if (this_aspect!=S_ALB)
 				{
-					this_aspect=91;
-					memo_aspect=91;
+					this_aspect=S_ALB;
+					memo_aspect=S_ALB;
 					NotifySubscribers();
 					Lights_Off();
 					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER"))) 
@@ -2928,8 +2749,7 @@ class Semnal isclass Signal
 						Lightup_Direction_Marker();
 					}
 					SetSpeedLimit(20/3.6);
-					SetFXAttachment("91",alb);
-					SetSignalState(AUTOMATIC,"Manevra permisa dincolo de semnal!");
+					SetFXAttachment(B_ALB,alb);
 				}
 			}
 		}	
@@ -2945,24 +2765,454 @@ class Semnal isclass Signal
 					memo_aspect=this_aspect;
 					NotifySubscribers();
 					Lights_Off();
-					SetSignalState(AUTOMATIC,"");
+					
 				}
 			}
 			if (active_fault)
 			{
-				if (this_aspect!=70)
+				if (this_aspect!=S_ROSU_AV)
 				{
-					this_aspect=70;
-					memo_aspect=70;
+					this_aspect=S_ROSU_AV;
+					memo_aspect=S_ROSU_AV;
 					NotifySubscribers();
 					Lights_Off();
-					SetFXAttachment("70",rosu);
-					SetSignalState(RED,"PERICOL la trecerea la nivel!");
+					SetFXAttachment(B_ROSU_AV,rosu);
 				}
 			}
 		} 
 	}
 
+	void SignalControl_MEC(void)
+	{
+		//INTRARE si IESIRE 1i
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")) and Str.ToInt(ST.GetString("LIGHTS_COUNT"))==1)
+		{
+			if (GetSignalState()==RED) 
+			{
+				this_aspect=S_ROSU;
+				if (this_aspect!=memo_aspect)
+				{
+					NotifySubscribers();
+					memo_aspect=this_aspect;
+					Lights_Off();
+					SetFXCoronaTexture(B_ROSU,rosu);
+					SetMeshAnimationFrame("default",0,1);
+				}
+			}
+			else
+			{
+				this_aspect=S_VERDE;
+					
+				if (this_aspect!=memo_aspect)
+				{
+					NotifySubscribers();
+					memo_aspect=this_aspect;
+					Lights_Off();
+					SetMeshAnimationFrame("default",30,1);
+					SetFXCoronaTexture(B_ROSU,verde);
+				}
+			}
+		}
+		
+		//INTRARE si IESIRE 2i
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")) and Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2)
+		{
+			if (GetSignalState()==RED) 
+			{
+				this_aspect=S_ROSU;
+				if (this_aspect!=memo_aspect)
+				{
+					NotifySubscribers();
+					memo_aspect=this_aspect;
+					Lights_Off();
+					SetFXCoronaTexture(B_ROSU,rosu);
+					SetMeshAnimationFrame("default",60,1);
+				}
+			}
+			else
+			{
+				restriction=FindLimit();
+				
+				if (restriction==R_30)
+					this_aspect=S_VER_GAL;
+				else
+					this_aspect=S_VERDE;
+					
+				if (this_aspect!=memo_aspect)
+				{
+					NotifySubscribers();
+					memo_aspect=this_aspect;
+					Lights_Off();
+					
+					if (this_aspect==S_VER_GAL)
+					{
+						SetMeshAnimationFrame("default",90,1);
+						SetFXCoronaTexture(B_ROSU,verde);
+						SetFXCoronaTexture(B_GALBEN,galben);
+					}
+					else
+					{
+						SetMeshAnimationFrame("default",30,1);
+						SetFXCoronaTexture(B_ROSU,verde);
+					}
+				}
+			}
+		}
+		
+		//INTRARE si IESIRE 3i
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")) and Str.ToInt(ST.GetString("LIGHTS_COUNT"))==3)
+		{
+			if (GetSignalState()==RED) 
+			{
+				this_aspect=S_ROSU;
+				if (this_aspect!=memo_aspect)
+				{
+					NotifySubscribers();
+					memo_aspect=this_aspect;
+					Lights_Off();
+					SetFXCoronaTexture(B_ROSU,rosu);
+					SetFXCoronaTexture(B_GAL_JOS,galben);
+					SetMeshAnimationFrame("default",60,1);
+					SetMeshAnimationFrame("paleta",0,2);
+				}
+			}
+			else
+			{
+				switch (next_aspect)
+				{
+				case S_ROSU:
+					this_aspect=S_GALBEN;
+					break;
+				case S_GALBEN:
+					this_aspect=S_VERDE;
+					break;
+				case S_VERDE:
+					this_aspect=S_VERDE;
+					break;
+				case S_GAL_CL:
+					this_aspect=S_VERDE;
+					break;
+				case S_GAL_DCL:
+					this_aspect=S_VERDE;
+					break;
+				case S_VER_CL:
+					this_aspect=S_VERDE;
+					break;
+				case S_GAL_GAL:
+					this_aspect=S_VERDE;
+					break;
+				case S_VER_GAL:
+					this_aspect=S_VERDE;
+					break;
+				case S_GAL_GAL_60:
+					this_aspect=S_VERDE;
+					break;
+				case S_VER_GAL_60:
+					this_aspect=S_VERDE;
+					break;
+				case S_GAL_GAL_90:
+					this_aspect=S_VERDE;
+					break;
+				case S_VER_GAL_90:
+					this_aspect=S_VERDE;
+					break;
+				case S_ROSU_AV:
+					this_aspect=S_GALBEN;
+					break;
+				case S_ALB:
+					this_aspect=S_VERDE;
+					break;
+				case S_CHEMARE:
+					this_aspect=S_GALBEN;
+					break;
+				default:;
+				}
+				
+				if (next_aspect>=100)
+					this_aspect=S_VERDE;
+
+				restriction=FindLimit();
+				if (restriction==R_30)
+				{
+					if (this_aspect>1)
+						this_aspect=S_VERDE;
+					this_aspect = this_aspect + 6;                         
+				}	                                
+
+				if (this_aspect!=memo_aspect)
+				{
+					NotifySubscribers();
+					memo_aspect=this_aspect;
+					Lights_Off();
+
+					switch (this_aspect)
+					{
+					case S_GALBEN:
+						SetFXCoronaTexture(B_ROSU,verde);
+						SetFXCoronaTexture(B_GAL_JOS,galben);
+						SetMeshAnimationFrame("default",30,1);
+						SetMeshAnimationFrame("paleta",0,2);
+						break;
+					case S_VERDE:
+						SetFXCoronaTexture(B_ROSU,verde);
+						SetFXCoronaTexture(B_GAL_JOS,verde);
+						SetMeshAnimationFrame("default",30,1);
+						SetMeshAnimationFrame("paleta",120,2);
+						break;
+					case S_GAL_GAL:
+						SetFXCoronaTexture(B_ROSU,verde);
+						SetFXCoronaTexture(B_GALBEN,galben);
+						SetFXCoronaTexture(B_GAL_JOS,galben);
+						SetMeshAnimationFrame("default",90,1);
+						SetMeshAnimationFrame("paleta",0,2);
+						SetSpeedLimit(30/3.6);
+						break;
+					case S_VER_GAL:
+						SetFXCoronaTexture(B_ROSU,verde);
+						SetFXCoronaTexture(B_GALBEN,galben);
+						SetFXCoronaTexture(B_GAL_JOS,verde);
+						SetMeshAnimationFrame("default",90,1);
+						SetMeshAnimationFrame("paleta",120,2);
+						SetSpeedLimit(30/3.6);
+						break;
+					default:;
+					}
+				}
+			}
+		}
+		
+		//PREVESTITOR 2i
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_DISTANT")) and Str.ToInt(ST.GetString("LIGHTS_COUNT"))==1)
+		{
+			switch (next_aspect)
+			{
+            case S_ROSU:
+                this_aspect=S_GALBEN;
+                break;
+            case S_GALBEN:
+				this_aspect=S_VERDE;
+                break;
+            case S_VERDE:
+                this_aspect=S_VERDE;
+                break;
+            case S_GAL_CL:
+                this_aspect=S_VERDE;
+                break;
+            case S_GAL_DCL:
+                this_aspect=S_VERDE;
+                break;
+            case S_VER_CL:
+                this_aspect=S_VERDE;
+                break;
+            case S_GAL_GAL:
+                this_aspect=S_GALBEN;
+                break;
+            case S_VER_GAL:
+                this_aspect=S_GALBEN;
+                break;
+            case S_GAL_GAL_60:
+                this_aspect=S_GALBEN;
+                break;
+            case S_VER_GAL_60:
+                this_aspect=S_GALBEN;
+                break;
+            case S_GAL_GAL_90:
+                this_aspect=S_GALBEN;
+                break;
+            case S_VER_GAL_90:
+                this_aspect=S_GALBEN;
+                break; 
+			case S_ROSU_AV:
+				this_aspect=S_GALBEN;
+				break;
+			case S_ALB:
+				this_aspect=S_VERDE;
+				break;
+			case S_CHEMARE:
+				this_aspect=S_GALBEN;
+				break;
+            default:;
+			}
+			
+			if (next_aspect>=100)
+				this_aspect=S_VERDE;   
+				
+			if (this_aspect!=memo_aspect)
+			{
+				NotifySubscribers();
+				memo_aspect=this_aspect;
+				Lights_Off();
+				switch (this_aspect)
+				{
+				case S_GALBEN:
+					SetMeshAnimationFrame("default",0,2);
+					SetFXCoronaTexture(B_GALBEN,galben);
+					break;
+				case S_VERDE:
+					SetMeshAnimationFrame("default",120,2);
+					SetFXCoronaTexture(B_GALBEN,verde);
+					break;
+				default:;
+				}
+			}
+		}
+		
+		//PREVESTITOR 3i
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_DISTANT")) and Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2)
+		{
+			switch (next_aspect)
+			{
+            case S_ROSU:
+                this_aspect=S_GALBEN;
+                break;
+            case S_GALBEN:
+				this_aspect=S_VERDE;
+                break;
+            case S_VERDE:
+                this_aspect=S_VERDE;
+                break;
+            case S_GAL_CL:
+                this_aspect=S_VERDE;
+                break;
+            case S_GAL_DCL:
+                this_aspect=S_VERDE;
+                break;
+            case S_VER_CL:
+                this_aspect=S_VERDE;
+                break;
+            case S_GAL_GAL:
+                this_aspect=S_GAL_GAL;
+                break;
+            case S_VER_GAL:
+                this_aspect=S_GAL_GAL;
+                break;
+            case S_GAL_GAL_60:
+                this_aspect=S_GAL_GAL;
+                break;
+            case S_VER_GAL_60:
+                this_aspect=S_GAL_GAL;
+                break;
+            case S_GAL_GAL_90:
+                this_aspect=S_GAL_GAL;
+                break;
+            case S_VER_GAL_90:
+                this_aspect=S_GAL_GAL;
+                break; 
+			case S_ROSU_AV:
+				this_aspect=S_GALBEN;
+				break;
+			case S_ALB:
+				this_aspect=S_VERDE;
+				break;
+			case S_CHEMARE:
+				this_aspect=S_GALBEN;
+				break;
+            default:;
+			}
+			
+			if (next_aspect>=100)
+				this_aspect=S_VERDE;   
+				
+			if (this_aspect!=memo_aspect)
+			{
+				NotifySubscribers();
+				memo_aspect=this_aspect;
+				Lights_Off();
+				switch (this_aspect)
+				{
+				case S_GALBEN:
+					SetMeshAnimationFrame("default",0,2);
+					SetMeshAnimationFrame("paleta",60,1);
+					SetFXCoronaTexture(B_GALBEN,galben);
+					break;
+				case S_VERDE:
+					SetMeshAnimationFrame("default",120,2);
+					SetMeshAnimationFrame("paleta",60,1);
+					SetFXCoronaTexture(B_GALBEN,verde);
+					break;
+				case S_GAL_GAL:
+					SetMeshAnimationFrame("default",0,2);
+					SetMeshAnimationFrame("paleta",90,1);
+					SetFXCoronaTexture(B_GALBEN,galben);
+					SetFXCoronaTexture(B_GAL_JOS,galben);
+					break;
+				default:;
+				}
+			}
+		}
+		
+		//REPETITOR
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_REPEATER")))
+		{
+			this_aspect=next_aspect;
+			
+			if (this_aspect!=memo_aspect)
+			{
+				memo_aspect=this_aspect;
+				NotifySubscribers();
+				Lights_Off();
+				
+				if (this_aspect==S_ROSU)
+				{
+					SetMeshAnimationFrame("default",0,1);
+					SetFXCoronaTexture(B_GALBEN,galben);
+				}
+				else
+				{
+					SetMeshAnimationFrame("default",30,1);
+					SetFXCoronaTexture(B_GALBEN,verde);
+				}
+			}
+		}
+		
+		//MANEVRA
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_SHUNT")))
+		{
+			//Daca a trecut trenul de semnal si nu e de I/E pune albastru
+			if (!Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")) and GetSignalState()==RED)
+			{
+				this_aspect=next_aspect;
+				if (this_aspect!=memo_aspect)
+				{
+					memo_aspect=this_aspect;
+					NotifySubscribers();
+					Lights_Off();
+					SetFXCoronaTexture(B_ALB,albastru);
+					SetMeshAnimationFrame("default",0,1);
+				}
+			}
+			
+			//Daca nu e manevra permisa si nu e de I/E pune albastru
+			if (!active_shunt and !Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")))
+			{
+				this_aspect=next_aspect;
+				if (this_aspect!=memo_aspect)
+				{
+					memo_aspect=this_aspect;
+					NotifySubscribers();
+					Lights_Off();
+					SetFXCoronaTexture(B_ALB,albastru);
+					SetMeshAnimationFrame("default",0,1);
+				}
+			}
+			
+			//Daca e activa manevra si e liber pune alb
+			if (active_shunt and !(GetSignalState()==RED))
+			{
+				if (this_aspect!=S_ALB)
+				{
+					this_aspect=S_ALB;
+					memo_aspect=S_ALB;
+					NotifySubscribers();
+					Lights_Off();
+					SetSpeedLimit(20/3.6);
+					SetFXCoronaTexture(B_ALB,alb);
+					SetMeshAnimationFrame("default",30,1);
+				}
+			}
+		} 
+	}
+	
 	//Functia de aprindere a semnalelor DTV
 	void SignalControl_DTV(void)
 	{
@@ -2971,13 +3221,13 @@ class Semnal isclass Signal
 		{
 			if (GetSignalState()==RED) 
 			{
-				this_aspect=0;
+				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
 				{
 					NotifySubscribers();
-					memo_aspect=0;
+					memo_aspect=S_ROSU;
 					Lights_Off();
-					SetFXAttachment("0",rosu);
+					SetFXAttachment(B_ROSU,rosu);
 				}
 			}
 			else
@@ -2985,15 +3235,15 @@ class Semnal isclass Signal
 				//INTRARE
 				if(Str.ToInt(ST.GetString("IS_ENTRY")))
 				{
-					this_aspect=92; //Aspect de chemare
+					this_aspect=S_CHEMARE; //Aspect de chemare
 					
 					if (this_aspect!=memo_aspect)
 					{
 						NotifySubscribers(); 
 						memo_aspect=this_aspect;
 						Lights_Off();
-						SetFXAttachment("0",rosu);
-						SetFXAttachment("92",albclipitor); 
+						SetFXAttachment(B_ROSU,rosu);
+						SetFXAttachment(B_CHEMARE,albclipitor); 
 						SetSpeedLimit(20/3.6);
 					}
 				}
@@ -3001,14 +3251,14 @@ class Semnal isclass Signal
 				//IESIRE
 				if(!Str.ToInt(ST.GetString("IS_ENTRY")))
 				{
-					this_aspect=91; //Aspect de manevra
+					this_aspect=S_ALB; //Aspect de manevra
 					
 					if (this_aspect!=memo_aspect)
 					{
 						NotifySubscribers(); 
 						memo_aspect=this_aspect;
 						Lights_Off();
-						SetFXAttachment("91",alb);
+						SetFXAttachment(B_ALB,alb);
 						SetSpeedLimit(20/3.6);
 					}
 				}
@@ -3020,110 +3270,77 @@ class Semnal isclass Signal
 		{
 			if (GetSignalState()==RED) 
 			{
-				this_aspect=0;
+				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
 				{
 					NotifySubscribers();
-					memo_aspect=0;
+					memo_aspect=S_ROSU;
 					Lights_Off();
 					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER")))
 					{
 						direction=0;
 						Lightup_Direction_Marker();
 					}
-					SetFXAttachment("0",rosu);
+					SetFXAttachment(B_ROSU,rosu);
 				}
 			}
 			else
 			{
 				if (!active_shunt)
 				{
-					SetSignalState(AUTOMATIC,"");
+					
 					switch (next_aspect)
 					{
-					case 0:
-						this_aspect=1;
+					case S_ROSU:
+						this_aspect=S_GALBEN;
 						break;
-					case 1:
-						this_aspect=2;
+					case S_GALBEN:
+						this_aspect=S_VERDE;
 						break;
-					case 2:
-						this_aspect=2;
+					case S_VERDE:
+						this_aspect=S_VERDE;
 						break;
-					case 3:
-						this_aspect=2;
+					case S_GAL_CL:
+						this_aspect=S_VERDE;
 						break;
-					case 4:
-						this_aspect=2;
+					case S_GAL_DCL:
+						this_aspect=S_VERDE;
 						break;
-					case 5:
-						this_aspect=2;
+					case S_VER_CL:
+						this_aspect=S_VERDE;
 						break;
-					case 6:
-					this_aspect=2;
-					break;
-					case 7:
-					this_aspect=3;
-					break;
-				   case 8:
-					this_aspect=3;
-					break;
-				   case 9:
-					this_aspect=3;
-					break;
-				   case 10:
-					this_aspect=3;
-					break;
-				   case 11:
-					this_aspect=3;
-					break;
-				   case 12:
-					this_aspect=3;
-					break;
-				   case 13:
-					this_aspect=4;
-					break;
-				   case 14:
-					this_aspect=4;
-					break;
-				   case 15:
-					this_aspect=4;
-					break;
-				   case 16:
-					this_aspect=4;
-					break;
-				   case 17:
-					this_aspect=4;
-					break;
-				   case 18:
-					this_aspect=4;
-					break;
-				   case 19:
-					this_aspect=6;
-					break;
-				   case 20:
-					this_aspect=6;
-					break;
-				   case 21:
-					this_aspect=6;
-					break;
-				   case 22:
-					this_aspect=6;
-					break;
-					case 23:
-						this_aspect=6;
+					case S_GAL_GAL:
+						this_aspect=S_GAL_CL;
 						break;
-					case 24:
-						this_aspect=6;
+					case S_VER_GAL:
+						this_aspect=S_GAL_CL;
 						break;
-					case 91:
-						this_aspect=2;
+					case S_GAL_GAL_60:
+						this_aspect=S_GAL_CL;
+						break;
+					case S_VER_GAL_60:
+						this_aspect=S_GAL_CL;
+						break;
+					case S_GAL_GAL_90:
+						this_aspect=S_GAL_CL;
+						break;
+					case S_VER_GAL_90:
+						this_aspect=S_GAL_CL;
+						break;
+					case S_ROSU_AV:
+						this_aspect=S_GALBEN;
+						break;
+					case S_ALB:
+						this_aspect=S_VERDE;
+						break;
+					case S_CHEMARE:
+						this_aspect=S_GALBEN;
 						break;
 					default:;
 					}
 					
 					if (next_aspect>=100)
-						this_aspect=2;
+						this_aspect=S_VERDE;
 						
 					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER")))
 					{
@@ -3136,14 +3353,15 @@ class Semnal isclass Signal
 					restriction=FindLimit();
 					switch (restriction)
 					{
-					case 1:
+					case R_30:
 						if (this_aspect>1)
-							this_aspect=2;
+							this_aspect=S_VERDE;
 						this_aspect = this_aspect + 6;                         
 						break;
-					case 2: 
+						
+					case R_60: 
 						if (this_aspect>1)
-							this_aspect=2;
+							this_aspect=S_VERDE;
 						switch (Str.ToInt(ST.GetString("HAS_BAR")))
 						{
 						case 0:
@@ -3161,9 +3379,10 @@ class Semnal isclass Signal
 						default:;           
 						}
 						break;
-					case 3:
+						
+					case R_90:
 						if (this_aspect>1)
-							this_aspect=2;
+							this_aspect=S_VERDE;
 						switch (Str.ToInt(ST.GetString("HAS_BAR")))
 						{
 						case 0:
@@ -3182,12 +3401,12 @@ class Semnal isclass Signal
 						}                          
 						break;
 					
-					case 91: //Manevra
-						this_aspect = 91;
+					case R_MANEVRA:
+						this_aspect=S_ALB;
 						break;
 					
-					case 92: //Chemare
-						this_aspect = 92;
+					case R_CHEMARE:
+						this_aspect=S_CHEMARE;
 						break;
 					default:;               
 					}                                 
@@ -3201,168 +3420,72 @@ class Semnal isclass Signal
 						//Daca este activata iesirea pe linia din stanga
 						if (current_config_index!=-1)
 							if (Str.ToInt(rules[current_config_index].exit_left))
-								SetFXAttachment("80",alblinie);
+								SetFXAttachment(B_LINIE,alblinie);
 
 						switch (this_aspect)
 						{
-						case 1:
-							SetFXAttachment("1",galben);
+						case S_GALBEN:
+							SetFXAttachment(B_GALBEN,galben);
 							break;
-						case 2:
-							SetFXAttachment("2",verde);
+						case S_VERDE:
+							SetFXAttachment(B_VERDE,verde);
 							break;
-						case 3:
-							SetFXAttachment("3",galbenclipitor);
+						case S_GAL_CL:
+							SetFXAttachment(B_GALBEN,galbenclipitor);
 							break;
-						case 4:
-							SetFXAttachment("3",galbenclipitor); //Atentie! Nu e dublu-clipitor
-							break;
-						case 5:
-							SetFXAttachment("5",verdeclipitor);
-							break;
-						case 6:
-							SetFXAttachment("2",verde);
-							SetFXAttachment("7",galben);
-							break;
-						case 7:
-							SetFXAttachment("1",galben);
-							SetFXAttachment("7",galben);
+						case S_GAL_GAL:
+							SetFXAttachment(B_GALBEN,galben);
+							SetFXAttachment(B_GAL_JOS,galben);
 							SetSpeedLimit(30/3.6);
 							break;
-						case 8:
-							SetFXAttachment("2",verde);
-							SetFXAttachment("7",galben);
+						case S_VER_GAL:
+							SetFXAttachment(B_VERDE,verde);
+							SetFXAttachment(B_GAL_JOS,galben);
 							SetSpeedLimit(30/3.6);
 							break;
-						case 9:
-							SetFXAttachment("3",galbenclipitor);
-							SetSpeedLimit(30/3.6);
-							break;
-						case 10:
-							SetFXAttachment("3",galbenclipitor);
-							SetSpeedLimit(30/3.6);
-							break;
-						case 11:
-							SetFXAttachment("5",verdeclipitor);
-							SetFXAttachment("7",galben);
-							SetSpeedLimit(30/3.6);
-							break;
-						case 12:
-							SetFXAttachment("6",verdeclipitor);
-							SetFXAttachment("7",galben);
-							SetSpeedLimit(30/3.6);
-							break;
-						case 13:
-							SetFXAttachment("1",galben);
-							SetFXAttachment("7",galben);
+						case S_GAL_GAL_60:
+							SetFXAttachment(B_GALBEN,galben);
+							SetFXAttachment(B_GAL_JOS,galben);
 							SetFXAttachment("45",galbenmic);
 							SetFXAttachment("46",galbenmic);
 							SetFXAttachment("47",galbenmic);
 							SetFXAttachment("48",galbenmic);
 							SetSpeedLimit(60/3.6);
 							break;
-						case 14:
-							SetFXAttachment("2",verde);
-							SetFXAttachment("7",galben);
+						case S_VER_GAL_60:
+							SetFXAttachment(B_VERDE,verde);
+							SetFXAttachment(B_GAL_JOS,galben);
 							SetFXAttachment("45",galbenmic);
 							SetFXAttachment("46",galbenmic);
 							SetFXAttachment("47",galbenmic);
 							SetFXAttachment("48",galbenmic);
 							SetSpeedLimit(60/3.6);
 							break;
-						case 15:
-							SetFXAttachment("3",galbenclipitor);
-							SetFXAttachment("45",galbenmic);
-							SetFXAttachment("46",galbenmic);
-							SetFXAttachment("47",galbenmic);
-							SetFXAttachment("48",galbenmic);
-							SetSpeedLimit(60/3.6);
-							break;
-						case 16:
-							SetFXAttachment("3",galbenclipitor);
-							SetFXAttachment("45",galbenmic);
-							SetFXAttachment("46",galbenmic);
-							SetFXAttachment("47",galbenmic);
-							SetFXAttachment("48",galbenmic);
-							SetSpeedLimit(60/3.6);
-							break;
-						case 17:
-							SetFXAttachment("5",verdeclipitor);
-							SetFXAttachment("7",galben);
-							SetFXAttachment("45",galbenmic);
-							SetFXAttachment("46",galbenmic);
-							SetFXAttachment("47",galbenmic);
-							SetFXAttachment("48",galbenmic);
-							SetSpeedLimit(60/3.6);
-							break;
-						case 18:
-							SetFXAttachment("6",verdeclipitor);
-							SetFXAttachment("7",galben);
-							SetFXAttachment("45",galbenmic);
-							SetFXAttachment("46",galbenmic);
-							SetFXAttachment("47",galbenmic);
-							SetFXAttachment("48",galbenmic);
-							SetSpeedLimit(60/3.6);
-							break;
-						case 19:
-							SetFXAttachment("1",galben);
-							SetFXAttachment("7",galben);
+						case S_GAL_GAL_90:
+							SetFXAttachment(B_GALBEN,galben);
+							SetFXAttachment(B_GAL_JOS,galben);
 							SetFXAttachment("40",verdemic);
 							SetFXAttachment("41",verdemic);
 							SetFXAttachment("42",verdemic);
 							SetFXAttachment("43",verdemic);
 							SetSpeedLimit(90/3.6);
 							break;
-						case 20:
-							SetFXAttachment("2",verde);
-							SetFXAttachment("7",galben);
+						case S_VER_GAL_90:
+							SetFXAttachment(B_VERDE,verde);
+							SetFXAttachment(B_GAL_JOS,galben);
 							SetFXAttachment("40",verdemic);
 							SetFXAttachment("41",verdemic);
 							SetFXAttachment("42",verdemic);
 							SetFXAttachment("43",verdemic);
 							SetSpeedLimit(90/3.6);
 							break;
-						case 21:
-							SetFXAttachment("3",galbenclipitor);
-							SetFXAttachment("40",verdemic);
-							SetFXAttachment("41",verdemic);
-							SetFXAttachment("42",verdemic);
-							SetFXAttachment("43",verdemic);
-							SetSpeedLimit(90/3.6);
-							break;
-						case 22:
-							SetFXAttachment("3",galbenclipitor);
-							SetFXAttachment("40",verdemic);
-							SetFXAttachment("41",verdemic);
-							SetFXAttachment("42",verdemic);
-							SetFXAttachment("43",verdemic);
-							SetSpeedLimit(90/3.6);
-							break;
-						case 23:
-							SetFXAttachment("5",verdeclipitor);
-							SetFXAttachment("7",galben);
-							SetFXAttachment("40",verdemic);
-							SetFXAttachment("41",verdemic);
-							SetFXAttachment("42",verdemic);
-							SetFXAttachment("43",verdemic);
-							SetSpeedLimit(90/3.6);
-							break;
-						case 24:
-							SetFXAttachment("6",verdeclipitor);
-							SetFXAttachment("7",galben);
-							SetFXAttachment("40",verdemic);
-							SetFXAttachment("41",verdemic);
-							SetFXAttachment("42",verdemic);
-							SetFXAttachment("43",verdemic);
-							SetSpeedLimit(90/3.6);
-							break;
-						case 91: //Manevra
-							SetFXAttachment("91",alb);
+						case S_ALB:
+							SetFXAttachment(B_ALB,alb);
 							SetSpeedLimit(20/3.6);
 							break;
-						case 92: //Chemare
-							SetFXAttachment("92",albclipitor);
-							SetFXAttachment("0",rosu);
+						case S_CHEMARE:
+							SetFXAttachment(B_CHEMARE,albclipitor);
+							SetFXAttachment(B_ROSU,rosu);
 							SetSpeedLimit(20/3.6);
 							break;
 						default:;
@@ -3377,105 +3500,72 @@ class Semnal isclass Signal
 		{
 			if (GetSignalState()==RED) 
 			{
-				this_aspect=0;
+				this_aspect=S_ROSU;
 				if (this_aspect!=memo_aspect)
 				{
 					NotifySubscribers();
-					memo_aspect=0;
+					memo_aspect=S_ROSU;
 					Lights_Off();
-					SetFXAttachment("0",rosu);
+					SetFXAttachment(B_ROSU,rosu);
 				}
 			}
 			else
 			{
 				if (!active_fault)
 				{
-					SetSignalState(AUTOMATIC,"");
+					
 					switch (next_aspect)
 					{
-					case 0: //Daca urmeaza rosu
-						this_aspect=1; //Atunci e galben
+					case S_ROSU:
+						this_aspect=S_GALBEN;
 						break;
-					case 1: //Daca urmeaza galben
-						this_aspect=2; //Atunci e verde
+					case S_GALBEN:
+						this_aspect=S_VERDE;
 						break;
-					case 2: //Daca urmeaza verde
-						this_aspect=2; //Atunci e verde
+					case S_VERDE:
+						this_aspect=S_VERDE;
 						break;
-					case 3: //Daca urmeaza galben clipitor
-						this_aspect=2; //Atunci e verde
+					case S_GAL_CL:
+						this_aspect=S_VERDE;
 						break;
-               case 4: //Daca urmeaza galben clipitor
-                this_aspect=2; //Atunci e verde
-                break;
-               case 5: //Daca urmeaza verde clipitor
-                this_aspect=2; //Atunci e verde
-                break;
-               case 6: //Daca urmeaza verde-galben
-                this_aspect=2; //Atunci e verde
-                break;
-               case 7:  //Daca urmeaza galben-galben
-                this_aspect=3; //Atunci e galben clipitor
-                break;
-               case 8: //Daca urmeaza verde-galben
-                this_aspect=3; //Atunci e galben clipitor
-                break;
-               case 9: //Daca urmeaza galben-clipitor
-                this_aspect=3; //Atunci e galben clipitor
-                break;
-               case 10: //Daca urmeaza galben-clipitor
-                this_aspect=3; //Atunci e galben clipitor
-                break;
-               case 11:
-                this_aspect=3; //Atunci e galben clipitor
-                break;
-               case 12:
-                this_aspect=3; //Atunci e galben clipitor
-                break;
-               case 13:
-                this_aspect=4; //Atunci e galben dublu-clipitor
-                break;
-               case 14:
-                this_aspect=4; //Atunci e galben dublu-clipitor
-                break;
-               case 15:
-                this_aspect=4; //Atunci e galben dublu-clipitor
-                break;
-               case 16:
-                this_aspect=4; //Atunci e galben dublu-clipitor
-                break;
-               case 17:
-                this_aspect=4; //Atunci e galben dublu-clipitor
-                break;
-               case 18:
-                this_aspect=4; //Atunci e galben dublu-clipitor
-                break;
-               case 19:
-                this_aspect=6; //Atunci e verde clipitor
-                break;
-               case 20:
-                this_aspect=6; //Atunci e verde clipitor
-                break;
-               case 21:
-                this_aspect=6; //Atunci e verde clipitor
-                break;
-               case 22:
-                this_aspect=6; //Atunci e verde clipitor
-                break;
-					case 23:
-						this_aspect=6; //Atunci e verde clipitor
+					case S_GAL_DCL:
+						this_aspect=S_VERDE;
 						break;
-					case 24:
-						this_aspect=6; //Atunci e verde clipitor
+					case S_VER_CL:
+						this_aspect=S_VERDE;
 						break;
-					case 92: //Daca e prevestitor al semnalului DTV 2
-						this_aspect=1; //Atunci e galben
+					case S_GAL_GAL:
+						this_aspect=S_GAL_CL;
+						break;
+					case S_VER_GAL:
+						this_aspect=S_GAL_CL;
+						break;
+					case S_GAL_GAL_60:
+						this_aspect=S_GAL_DCL;
+						break;
+					case S_VER_GAL_60:
+						this_aspect=S_GAL_DCL;
+						break;
+					case S_GAL_GAL_90:
+						this_aspect=S_VER_CL;
+						break;
+					case S_VER_GAL_90:
+						this_aspect=S_VER_CL;
+						break;
+					case S_ROSU_AV:
+						this_aspect=S_GALBEN;
+						break;
+					case S_ALB:
+						this_aspect=S_VERDE;
+						break;
+					case S_CHEMARE:
+						this_aspect=S_GALBEN;
 						break;
 					default:;
 					}  
 					
-					if (next_aspect>=100)	//Daca urmatorul e TMV cu limitare viteza
-						this_aspect=2;  //Atunci e verde
+					if (next_aspect>=100)	//Daca urmatorul e TMV
+						this_aspect=S_VERDE;
 						
 					if (this_aspect!=memo_aspect)
 					{
@@ -3484,20 +3574,20 @@ class Semnal isclass Signal
 						Lights_Off();
 						switch (this_aspect)
 						{
-						case 1:
-							SetFXAttachment("1",galben);
+						case S_GALBEN:
+							SetFXAttachment(B_GALBEN,galben);
 							break;
-						case 2:
-							SetFXAttachment("2",verde);
+						case S_VERDE:
+							SetFXAttachment(B_VERDE,verde);
 							break;
-						case 3:
-							SetFXAttachment("3",galbenclipitor);
+						case S_GAL_CL:
+							SetFXAttachment(B_GALBEN,galbenclipitor);
 							break;
-						case 4:
-							SetFXAttachment("4",galbenclipitor2); //dublu-clipitor
+						case S_GAL_DCL:
+							SetFXAttachment(B_GALBEN,galbenclipitor2);
 							break;
-						case 6:
-							SetFXAttachment("6",verdeclipitor); //Atentie! Nu e dublu-clipitor
+						case S_VER_CL:
+							SetFXAttachment(B_VERDE,verdeclipitor);
 							break;
 						default:;
 						}
@@ -3511,89 +3601,56 @@ class Semnal isclass Signal
 		{
 			switch (next_aspect)
 			{
-            case 0:
-                this_aspect=1;
+            case S_ROSU:
+                this_aspect=S_GALBEN;
                 break;
-            case 1:
-				this_aspect=2;
+            case S_GALBEN:
+				this_aspect=S_VERDE;
                 break;
-            case 2:
-                this_aspect=2;
+            case S_VERDE:
+                this_aspect=S_VERDE;
                 break;
-            case 3:
-                this_aspect=2;
+            case S_GAL_CL:
+                this_aspect=S_VERDE;
                 break;
-               case 4:
-                this_aspect=2;
+            case S_GAL_DCL:
+                this_aspect=S_VERDE;
                 break;
-               case 5:
-                this_aspect=2;
+            case S_VER_CL:
+                this_aspect=S_VERDE;
                 break;
-               case 6:
-                this_aspect=2;
+            case S_GAL_GAL:
+                this_aspect=S_GAL_CL;
                 break;
-               case 7:
-                this_aspect=3;
+            case S_VER_GAL:
+                this_aspect=S_GAL_CL;
                 break;
-               case 8:
-                this_aspect=3;
+            case S_GAL_GAL_60:
+                this_aspect=S_GAL_CL;
                 break;
-               case 9:
-                this_aspect=3;
+            case S_VER_GAL_60:
+                this_aspect=S_GAL_CL;
                 break;
-               case 10:
-                this_aspect=3;
+            case S_GAL_GAL_90:
+                this_aspect=S_GAL_CL;
                 break;
-               case 11:
-                this_aspect=3;
-                break;
-               case 12:
-                this_aspect=3;
-                break;
-               case 13:
-                this_aspect=4;
-                break;
-               case 14:
-                this_aspect=4;
-                break;
-               case 15:
-                this_aspect=4;
-                break;
-               case 16:
-                this_aspect=4;
-                break;
-               case 17:
-                this_aspect=4;
-                break;
-               case 18:
-                this_aspect=4;
-                break;
-               case 19:
-                this_aspect=6;
-                break;
-               case 20:
-                this_aspect=6;
-                break;
-               case 21:
-                this_aspect=6;
-                break;
-               case 22:
-                this_aspect=6;
-                break;
-            case 23:
-                this_aspect=6;
-                break;
-            case 24:
-                this_aspect=6;
-                break;
-			case 92: //Daca e prevestitor al semnalului DTV 2
-				this_aspect=1; //Atunci e galben
+            case S_VER_GAL_90:
+                this_aspect=S_GAL_CL;
+                break; 
+			case S_ROSU_AV:
+				this_aspect=S_GALBEN;
+				break;
+			case S_ALB:
+				this_aspect=S_VERDE;
+				break;
+			case S_CHEMARE:
+				this_aspect=S_GALBEN;
 				break;
             default:;
 			}
 			
 			if (next_aspect>=100)
-				this_aspect=2;   
+				this_aspect=S_VERDE;   
 				
 			if (this_aspect!=memo_aspect)
 			{
@@ -3602,20 +3659,14 @@ class Semnal isclass Signal
 				Lights_Off();
 				switch (this_aspect)
 				{
-				case 1:
-					SetFXAttachment("1",galben);
+				case S_GALBEN:
+					SetFXAttachment(B_GALBEN,galben);
 					break;
-				case 2:
-					SetFXAttachment("2",verde);
+				case S_VERDE:
+					SetFXAttachment(B_VERDE,verde);
 					break;
-				case 3:
-					SetFXAttachment("3",galbenclipitor);
-					break;
-				case 4:
-					SetFXAttachment("3",galbenclipitor);
-					break;
-				case 6:
-					SetFXAttachment("3",galbenclipitor);
+				case S_GAL_CL:
+					SetFXAttachment(B_GALBEN,galbenclipitor);
 					break;
 				default:;
 				}
@@ -3625,7 +3676,8 @@ class Semnal isclass Signal
 		//REPETITOR
 		if (Str.ToInt(ST.GetString("SIGNAL_DTV_REPEATER")))
 		{
-			this_aspect=next_aspect;                                                                              
+			this_aspect=next_aspect;
+			
 			if (this_aspect!=memo_aspect)
 			{
 				memo_aspect=this_aspect;
@@ -3633,7 +3685,7 @@ class Semnal isclass Signal
 				Lights_Off();
 				
 				//rosu
-				if (this_aspect==0)
+				if (this_aspect==S_ROSU)
 				{
 					SetFXAttachment("50",albmic);
 					SetFXAttachment("51",albmic);
@@ -3645,7 +3697,7 @@ class Semnal isclass Signal
 				}
 				
 				//galben
-				if (this_aspect==1 or this_aspect>=3 and this_aspect<=113) 
+				if (this_aspect==S_GALBEN or this_aspect>=S_GAL_CL and this_aspect<=113) 
 				{
 					SetFXAttachment("50",albmic);
 					SetFXAttachment("51",albmic);
@@ -3657,7 +3709,7 @@ class Semnal isclass Signal
 				}
 				
 				//verde
-				if (this_aspect==2 or this_aspect>=114)
+				if (this_aspect==S_VERDE or this_aspect>=114)
 				{
 					SetFXAttachment("50",albmic);
 					SetFXAttachment("51",albmic);
@@ -3682,8 +3734,7 @@ class Semnal isclass Signal
 					memo_aspect=this_aspect;
 					NotifySubscribers();
 					Lights_Off();
-					SetFXAttachment("90",albastru);
-					SetSignalState(AUTOMATIC,"Manevra interzisa dincolo de semnal!");
+					SetFXAttachment(B_ALBASTRU,albastru);
 				}
 			}
 			
@@ -3696,18 +3747,17 @@ class Semnal isclass Signal
 					memo_aspect=this_aspect;
 					NotifySubscribers();
 					Lights_Off();
-					SetFXAttachment("90",albastru);
-					SetSignalState(AUTOMATIC,"Manevra interzisa dincolo de semnal!");
+					SetFXAttachment(B_ALBASTRU,albastru);
 				}
 			}
 			
 			//Daca e activa manevra si e liber pune alb
 			if (active_shunt and !(GetSignalState()==RED))
 			{
-				if (this_aspect!=91)
+				if (this_aspect!=S_ALB)
 				{
-					this_aspect=91;
-					memo_aspect=91;
+					this_aspect=S_ALB;
+					memo_aspect=S_ALB;
 					NotifySubscribers();
 					Lights_Off();
 					if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER"))) 
@@ -3716,8 +3766,7 @@ class Semnal isclass Signal
 						Lightup_Direction_Marker();
 					}
 					SetSpeedLimit(20/3.6);
-					SetFXAttachment("91",alb);
-					SetSignalState(AUTOMATIC,"Manevra permisa dincolo de semnal!");
+					SetFXAttachment(B_ALB,alb);
 				}
 			}
 		} 
@@ -3733,19 +3782,17 @@ class Semnal isclass Signal
 					memo_aspect=this_aspect;
 					NotifySubscribers();
 					Lights_Off();
-					SetSignalState(AUTOMATIC,"");
 				}
 			}
 			if (active_fault)
 			{
-				if (this_aspect!=70)
+				if (this_aspect!=S_ROSU_AV)
 				{
-					this_aspect=70;
-					memo_aspect=70;
+					this_aspect=S_ROSU_AV;
+					memo_aspect=S_ROSU_AV;
 					NotifySubscribers();
 					Lights_Off();
-					SetFXAttachment("70",rosu);
-					SetSignalState(RED,"PERICOL la trecerea la nivel!");
+					SetFXAttachment(B_ROSU_AV,rosu);
 				}
 			}
 		} 
@@ -3753,9 +3800,22 @@ class Semnal isclass Signal
 
 
 	void Update(void)
-	{
-		if (use_instruction==1) SignalControl_DTV();
-		if (use_instruction==3) SignalControl_TMV();     
+	{	
+		//Daca semnalul este scos din uz, ignora-l
+		if (xxx)
+		{
+			Lights_Off();
+			SetFXAttachment("xxx",GetAsset().FindAsset("xxx"));
+			this_aspect=next_aspect;
+			NotifySubscribers();
+		}
+		else
+		{
+			SetFXAttachment("xxx",null);
+			if (use_instruction==1) SignalControl_DTV();
+			if (use_instruction==2) SignalControl_MEC();
+			if (use_instruction==3) SignalControl_TMV();     
+		}
 	}
 
 	void SignalChange(Message msg)
@@ -3816,7 +3876,7 @@ class Semnal isclass Signal
 	//Functia de manevra permisa
 	void ShuntEnable(Message msg)
 	{
-		if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_MEC_SHUNT")))
 			active_shunt=1;
 		Update();
 	}
@@ -3824,7 +3884,7 @@ class Semnal isclass Signal
 	//Functia de manevra interzisa
 	void ShuntDisable(Message msg)
 	{
-		if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")))
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_MEC_SHUNT")))
 			active_shunt=0;
 		Update();
 	}
@@ -3845,6 +3905,22 @@ class Semnal isclass Signal
 		Update();
 	}
  
+	//Functia de chemare pornita
+	void CallEnable(Message msg)
+	{
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+			active_call=1;
+		Update();
+	}
+
+	//Functia de chemare oprita
+	void CallDisable(Message msg)
+	{
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")))
+			active_call=0;
+		Update();
+	}
+	
 	void Notify(Message msg)
 	{
 		if (msg.src==active_nextSignal)
@@ -4082,6 +4158,7 @@ class Semnal isclass Signal
 
 		if (mode==1)
 		{
+		
 			for (i=0; i<rules.size(); i++)
 			{
 				UnsubscribeFrom(rules[i].nextSignal);
@@ -4167,7 +4244,7 @@ class Semnal isclass Signal
 	{
 		string t;
 		if (text=="")
-			t=ST.GetString("none");
+			t=T_NONE;
 		else 
 			t=text;
 		return HTMLWindow.MakeLink("live://property/"+link,t);
@@ -4176,18 +4253,18 @@ class Semnal isclass Signal
 	//Functia ce intoarce regula cu indexul r
 	string GetRuleHTML(int r)
 	{
-		string bgcol=ST.GetString("BGCOLOR");
-		string bgcol2=ST.GetString("BGCOLOR2");
+		string bgcol=T_BGCOLOR;
+		string bgcol2=T_BGCOLOR2;
 		string ret=HTMLWindow.StartTable();
 		int j;
 		
 		ret=ret+HTMLWindow.MakeRow(
 			HTMLWindow.MakeCell("        ")+
-			HTMLWindow.MakeCell(ST.GetString("junction"),bgcol)+
-			HTMLWindow.MakeCell(ST.GetString("junction.left"),bgcol)+
-			HTMLWindow.MakeCell(ST.GetString("junction.forward"),bgcol)+
-			HTMLWindow.MakeCell(ST.GetString("junction.right"),bgcol)+
-			HTMLWindow.MakeCell(MakeProperty("del-rule/"+r,ST.GetString("del")),bgcol2)
+			HTMLWindow.MakeCell(T_JUNCTION,bgcol)+
+			HTMLWindow.MakeCell(T_JUNCTION_LEFT,bgcol)+
+			HTMLWindow.MakeCell(T_JUNCTION_FORWARD,bgcol)+
+			HTMLWindow.MakeCell(T_JUNCTION_RIGHT,bgcol)+
+			HTMLWindow.MakeCell(MakeProperty("del-rule/"+r,T_DEL),bgcol2)
 		);
 		
 		for(j=0; j<rules[r].njunc.size(); j++)
@@ -4199,13 +4276,13 @@ class Semnal isclass Signal
 				HTMLWindow.MakeCell(HTMLWindow.RadioButton("live://property/dir/"+r+"/"+j+"/"+Junction.DIRECTION_LEFT,rules[r].dir[j]==Junction.DIRECTION_LEFT),bgcol2)+
 				HTMLWindow.MakeCell(HTMLWindow.RadioButton("live://property/dir/"+r+"/"+j+"/"+Junction.DIRECTION_FORWARD,rules[r].dir[j]==Junction.DIRECTION_FORWARD),bgcol2)+
 				HTMLWindow.MakeCell(HTMLWindow.RadioButton("live://property/dir/"+r+"/"+j+"/"+Junction.DIRECTION_RIGHT,rules[r].dir[j]==Junction.DIRECTION_RIGHT),bgcol2)+
-				HTMLWindow.MakeCell(MakeProperty("del-junc/"+r+"/"+j,ST.GetString("del")),bgcol2)
+				HTMLWindow.MakeCell(MakeProperty("del-junc/"+r+"/"+j,T_DEL),bgcol2)
 			);
 		}
 		
 		ret=ret+HTMLWindow.MakeRow(
 			HTMLWindow.MakeCell("        ")+
-			HTMLWindow.MakeCell(MakeProperty("add-junc/"+r,ST.GetString("junction.add")),bgcol2)
+			HTMLWindow.MakeCell(MakeProperty("add-junc/"+r,T_JUNCTION_ADD),bgcol2)
 		);
 		
 		ret=ret+HTMLWindow.MakeRow(
@@ -4215,22 +4292,23 @@ class Semnal isclass Signal
 		
 		ret=ret+HTMLWindow.MakeRow(
 			HTMLWindow.MakeCell("        ")+
-			HTMLWindow.MakeCell(MakeProperty("rule-slow/"+r,"<font color=#0525FF>"+ST.GetString("restrictia."+rules[r].slow)+"</font>"),bgcol2)
+			HTMLWindow.MakeCell(MakeProperty("rule-slow/"+r,"<font color=#0525FF>"+T_RESTRICTIA[rules[r].slow]+"</font>"),bgcol2)
 		);
 		
 		if (Str.ToInt(ST.GetString("HAS_DIRECTION_MARKER")))
 		{
 			ret=ret+HTMLWindow.MakeRow(
 				HTMLWindow.MakeCell("        ")+
-				HTMLWindow.MakeCell(MakeProperty("rule-direction/"+r,"<font color=#40FF00>"+ST.GetString("directia."+rules[r].direction_marker)+"</font>"),bgcol2)
+				HTMLWindow.MakeCell(MakeProperty("rule-direction/"+r,"<font color=#0525FF>"+T_DIRECTIA[rules[r].direction_marker]+"</font>"),bgcol2)
 			);
 		}
 		
 		//CheckBox pentru iesire pe linia din stanga a caii duble
-		ret=ret+HTMLWindow.MakeRow(
-			HTMLWindow.MakeCell("        ")+
-			HTMLWindow.MakeCell(ST.GetString("iesire_st")+HTMLWindow.CheckBox("live://property/exit-left/"+r,rules[r].exit_left),bgcol2)
-		);
+		if (!is_mec) //nu exista la cele mecanice
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell("        ")+
+				HTMLWindow.MakeCell(T_IESIRE_ST+HTMLWindow.CheckBox("live://property/exit-left/"+r,rules[r].exit_left),bgcol2)
+			);
 		
 		ret=ret+HTMLWindow.EndTable();
 		return ret;
@@ -4239,13 +4317,13 @@ class Semnal isclass Signal
 	//Functia de afisare a paginii de configurare
 	public string GetDescriptionHTML(void)
 	{
-		string ret="<html><body><font color=#FFFFFF size=15><p>Semnal RO CFR</p></font><br>";
-		string bgcol=ST.GetString("BGCOLOR");
-		string bgcol2=ST.GetString("BGCOLOR2");
+		string ret="<html><body>"+T_TITLE+"<br>";
+		string bgcol=T_BGCOLOR;
+		string bgcol2=T_BGCOLOR2;
 		int dist; //distanta pana la urmatorul semnal/macaz
   
-		//INTRARE sau IESIRE DTV 2
-		if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) and (Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2))
+		//INTRARE sau IESIRE DTV 2 SAU MECANIC 1i
+		if ((Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) and (Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2)) or (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")) and (Str.ToInt(ST.GetString("LIGHTS_COUNT"))==1)))
 		{
 			ret=ret+HTMLWindow.StartTable();
 			ret=ret+HTMLWindow.MakeRow(
@@ -4255,12 +4333,17 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("one-signal-link","<font color=#A826B3>"+"Leaga Semnalul curent in Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnal urmator direct: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));  
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));  
 			
 			if (Str.ToInt(ST.GetString("IS_ENTRY")))
 				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este de INTRARE",bgcol));
 			else
 				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este de IESIRE",bgcol));
+	   
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
 	   
 			//Afisare distanta pana la urmatorul macaz
 			dist = DistantaMacaz();
@@ -4284,7 +4367,7 @@ class Semnal isclass Signal
 		}
 		
 		//INTRARE sau IESIRE
-		if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")) and !(Str.ToInt(ST.GetString("LIGHTS_COUNT"))==2))
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")))
 		{
 			ret=ret+HTMLWindow.StartTable();
 			ret=ret+HTMLWindow.MakeRow(
@@ -4295,7 +4378,7 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("config-help","<font color=#A826B3>"+"Gaseste toate macazurile"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnal urmator direct: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este de INTRARE/IESIRE/RAMIFICATIE",bgcol));
 			
 			//Afiseaza daca are si MANEVRA sau nu
@@ -4304,6 +4387,11 @@ class Semnal isclass Signal
 			else
 				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul nu da indicatie de MANEVRA",bgcol));
 
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
+			
 			//Afisare distanta pana la urmatorul macaz
 			dist = DistantaMacaz();
 			if (dist == 0)
@@ -4323,8 +4411,8 @@ class Semnal isclass Signal
 			if (rules.size()==0)
 			{
 				ret=ret+HTMLWindow.MakeRow(
-					HTMLWindow.MakeCell(ST.GetString("rules.none"),bgcol)+
-					HTMLWindow.MakeCell(MakeProperty("add-rule",ST.GetString("rules.add")),bgcol2)
+					HTMLWindow.MakeCell(T_RULES_NONE,bgcol)+
+					HTMLWindow.MakeCell(MakeProperty("add-rule",T_RULES_ADD),bgcol2)
 				);
 			}
 			else
@@ -4335,7 +4423,7 @@ class Semnal isclass Signal
 					Sleep(10);
 					ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(GetRuleHTML(r)));
 				}
-				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("add-rule",ST.GetString("rules.add")),bgcol2));
+				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("add-rule",T_RULES_ADD),bgcol2));
             }
 			
 			ret=ret+HTMLWindow.EndTable();    
@@ -4345,7 +4433,7 @@ class Semnal isclass Signal
 		}
 		
 		//MANEVRA
-		if (!(Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY"))) and (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT"))))
+		if (!(Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY"))) and (Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_MEC_SHUNT"))))
 		{
 			ret=ret+HTMLWindow.StartTable();
 			ret=ret+HTMLWindow.MakeRow(
@@ -4355,8 +4443,14 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("one-signal-link","<font color=#A826B3>"+"Leaga Semnalul curent in Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul urmator: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));  
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));  
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este de MANEVRA",bgcol));
+			
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
+			
 			ret=ret+HTMLWindow.EndTable();    
 			ret=ret+"</body></html>";
 			return ret;
@@ -4373,8 +4467,14 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("one-signal-link","<font color=#A826B3>"+"Leaga Semnalul curent in Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul urmator: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));  
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));  
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este de AVARIE",bgcol));
+			
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
+			
 			ret=ret+HTMLWindow.EndTable();    
 			ret=ret+"</body></html>";
 			return ret;
@@ -4391,7 +4491,7 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("one-signal-link","<font color=#A826B3>"+"Leaga Semnalul curent in Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnal urmator direct: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));  
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));  
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este BLOC DE LINIE AUTOMAT",bgcol));
 	   
 			//Afiseaza daca are si AVARIE sau nu
@@ -4399,6 +4499,11 @@ class Semnal isclass Signal
 				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul da indicatie de AVARIE",bgcol));
 			else
 				ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul nu da indicatie de AVARIE",bgcol));
+	   
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
 	   
 			//Afisare distanta pana la urmatorul semnal
 			dist = DistantaSemnal();
@@ -4421,7 +4526,7 @@ class Semnal isclass Signal
 		}
  
 		//PREVESTITOR
-		if (Str.ToInt(ST.GetString("SIGNAL_DTV_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_DISTANT")))
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_MEC_DISTANT")))
 		{
 			ret=ret+HTMLWindow.StartTable();
 			ret=ret+HTMLWindow.MakeRow(
@@ -4431,9 +4536,14 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("one-signal-link","<font color=#A826B3>"+"Leaga Semnalul curent in Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnal urmator direct: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));  
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));  
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este PREVESTITOR",bgcol));
 
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
+			
 			//Afisare distanta pana la urmatorul semnal
 			dist = DistantaSemnal();
 			if (dist == 0)
@@ -4455,7 +4565,7 @@ class Semnal isclass Signal
 		}
 		
 		//REPETITOR
-		if (Str.ToInt(ST.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(ST.GetString("SIGNAL_TMV_REPEATER")))
+		if (Str.ToInt(ST.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(ST.GetString("SIGNAL_TMV_REPEATER")) or Str.ToInt(ST.GetString("SIGNAL_MEC_REPEATER")))
 		{
 			ret=ret+HTMLWindow.StartTable();
 			ret=ret+HTMLWindow.MakeRow(
@@ -4465,8 +4575,14 @@ class Semnal isclass Signal
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("one-signal-link","<font color=#A826B3>"+"Leaga Semnalul curent in Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-link","<font color=#A826B3>"+"Reconstituire totala Schema de semnalizare"+"</font>"),bgcol2));
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul repeta indicatia semnalului: "+nextSignalName,bgcol));
-			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+ST.GetString("instructia."+use_instruction)+"</font>"),bgcol2));  
+			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell(MakeProperty("signal-instruction","<font color=#303030>"+T_INSTRUCTIA[use_instruction]+"</font>"),bgcol2));  
 			ret=ret+HTMLWindow.MakeRow(HTMLWindow.MakeCell("Semnalul este REPETITOR",bgcol));
+			
+			//Afiseaza caseta de scos din uz
+			ret=ret+HTMLWindow.MakeRow(
+				HTMLWindow.MakeCell(T_XXX+HTMLWindow.CheckBox("live://property/xxx",xxx),bgcol2)
+			);
+			
 			ret=ret+HTMLWindow.EndTable();    
 			ret=ret+"</body></html>";
 			return ret;
@@ -4514,8 +4630,8 @@ class Semnal isclass Signal
 		if (tok[0]=="rule-direction")
 		{
 			int i;
-			for(i=0;i<=27;i++)
-				list[list.size()]=ST.GetString("directia."+i); //citeste-le din config
+			for(i=0;i<T_DIRECTIA.size();i++)
+				list[list.size()]=T_DIRECTIA[i]; //citeste-le din config
 			return list;
 		}
 		
@@ -4525,11 +4641,21 @@ class Semnal isclass Signal
 			int i;
 			int l,p;
 			
-			//Daca este DTV, avem 3 viteze posibile
+			//Daca este MEC, avem 2 viteze posibile
+			if (is_mec)
+			{
+				l=0;
+				p=1;
+			}
+			
+			//Daca este DTV, avem 4 viteze posibile
 			if (is_dtv)
 			{
 				l=0;
-				p=3;
+				if (Str.ToInt(ST.GetString("HAS_BAR")))
+					p=3;
+				else
+					p=1;
 			}
 			
 			//Daca este TMV, avem 7 viteze posibile
@@ -4540,12 +4666,15 @@ class Semnal isclass Signal
 			}
 			
 			for(i=l;i<=p;i++)
-				list[list.size()]=ST.GetString("restrictia."+i); //citeste-le din config
+				list[list.size()]=T_RESTRICTIA[i]; //citeste-le din config
 				
 			//Regulile de manevra si chemare
-			list[list.size()]=ST.GetString("restrictia.91");
-			list[list.size()]=ST.GetString("restrictia.92");	
-				
+			if (!is_mec) //nu exista la cele mecanice
+			{
+				list[list.size()]=T_RESTRICTIA[91];
+				list[list.size()]=T_RESTRICTIA[92];	
+			}
+			
 			return list;
 		}
 
@@ -4559,7 +4688,14 @@ class Semnal isclass Signal
 			if (is_dtv)
 			{
 				l=1;
-				p=1;	//Am eliminat DTV Extins, p=2
+				p=1;
+			}
+			
+			//Daca este MEC, avem doar 1 posibilitate
+			if (is_mec)
+			{
+				l=2;
+				p=2;
 			}
 			
 			//Daca este TMV, avem doar 1 posibilitate
@@ -4570,7 +4706,7 @@ class Semnal isclass Signal
 			}
 			
 			for(i=l;i<=p;i++)
-				list[list.size()]=ST.GetString("instructia."+i); //citeste-le din config
+				list[list.size()]=T_INSTRUCTIA[i]; //citeste-le din config
 				
 			return list;
 		}
@@ -4588,8 +4724,8 @@ class Semnal isclass Signal
 		{
 			int r=Str.ToInt(tok[1]);
 			int i;   
-			for(i=0;i<=27;i++)
-				if (val==ST.GetString("directia."+i))
+			for(i=0;i<T_DIRECTIA.size();i++)
+				if (val==T_DIRECTIA[i])
 					rules[r].direction_marker = i;
 			Update();
 		}
@@ -4601,11 +4737,21 @@ class Semnal isclass Signal
 			int i;
 			int l,p;
 			
-			//Daca este DTV, avem 3 viteze posibile
+			//Daca este MEC, avem 2 viteze posibile
+			if (is_mec)
+			{
+				l=0;
+				p=1;
+			}
+			
+			//Daca este DTV, avem 4 viteze posibile
 			if (is_dtv)
 			{
 				l=0;
-				p=3;
+				if (Str.ToInt(ST.GetString("HAS_BAR")))
+					p=3;
+				else
+					p=1;
 			}
 			
 			//Daca este TMV, avem 7 viteze posibile
@@ -4616,15 +4762,18 @@ class Semnal isclass Signal
 			}
 			
 			for(i=l;i<=p;i++)
-				if (val==ST.GetString("restrictia."+i))
+				if (val==T_RESTRICTIA[i])
 					rules[r].slow = i;
 					
-			//Regulile de manevra si chemare		
-			if (val==ST.GetString("restrictia.91"))
-					rules[r].slow = 91;
-			if (val==ST.GetString("restrictia.92"))
-					rules[r].slow = 92;
-					
+			//Regulile de manevra si chemare
+			if (!is_mec) //nu exista la cele mecanice
+			{
+				if (val==T_RESTRICTIA[91])
+						rules[r].slow = 91;
+				if (val==T_RESTRICTIA[92])
+						rules[r].slow = 92;
+			}
+			
 			Update();
 		}
 		
@@ -4638,7 +4787,14 @@ class Semnal isclass Signal
 			if (is_dtv)
 			{
 				l=1;
-				p=1; //Am eliminat DTV Extins, p=2
+				p=1;
+			}
+			
+			//Daca este MEC, avem doar 1 posibilitate
+			if (is_mec)
+			{
+				l=2;
+				p=2;
 			}
 			
 			//Daca este TMV, avem doar 1 posibilitate
@@ -4649,7 +4805,7 @@ class Semnal isclass Signal
 			}
 			
 			for(i=l;i<=p;i++)
-				if (val==ST.GetString("instructia."+i))
+				if (val == T_INSTRUCTIA[i])
 					use_instruction = i;
 
 			Update();
@@ -4675,7 +4831,7 @@ class Semnal isclass Signal
 			if (thisSignalDisplayName!="")
 			{ 
 				//Daca semnalul e pitic, nu imparti textul in doua randuri
-				if (Str.ToInt(ST.GetString("pitic")))
+				if (Str.ToInt(ST.GetString("PITIC")))
 					SetFXNameText("name0",thisSignalDisplayName);
 				else
 				//Daca nu e pitic, imparte textul in doua randuri
@@ -4693,6 +4849,12 @@ class Semnal isclass Signal
 		{
 			int r=Str.ToInt(tok[1]);
 			rules[r].exit_left=Str.ToInt(tok[2]);
+		}
+		
+		//Daca s-a modificat CheckBox-ul pentru semnal scos din uz.
+		if (tok[0]=="xxx")
+		{
+			xxx=Str.ToInt(tok[1]);
 		}
 	}
 
@@ -4787,6 +4949,12 @@ class Semnal isclass Signal
 			int r=Str.ToInt(tok[1]);
 			rules[r].exit_left=!rules[r].exit_left;
 		}
+		
+		//Daca am modificat CheckBox-ul pentru semnal scos din uz
+		if (tok[0]=="xxx")
+		{
+			xxx=!xxx;
+		}
 	}
 
 	public string GetPropertyName(string id)
@@ -4794,15 +4962,15 @@ class Semnal isclass Signal
 		string[] tok=Str.Tokens(id,"/");
 
 		if (tok[0]=="rule-direction")
-			return ST.GetString("selectdir");
+			return T_SELECT_DIR;
 		else if (tok[0]=="junc")
-			return ST.GetString("junction");
+			return T_JUNCTION;
 		else if (tok[0]=="name")
-			return ST.GetString("selectname");
+			return T_SELECT_NAME;
 		else if (tok[0]=="rule-slow")
-			return ST.GetString("selectrestrictie");
+			return T_SELECT_RESTRICT;
 		else if (tok[0]=="signal-instruction")
-			return ST.GetString("selectinstruct");  
+			return T_SELECT_INSTRUCT;  
 			
 		return "";
 	}
@@ -4817,6 +4985,7 @@ class Semnal isclass Signal
 		Soup sig=inherited();
 		sig.SetNamedTag("NextSignalName",nextSignalName);
 		sig.SetNamedTag("DisplayedName",thisSignalDisplayName);
+		sig.SetNamedTag("xxx",xxx);
 		sig.SetNamedTag("Instruction",use_instruction);
 		sig.SetNamedTag("rules.num",rules.size());
 		int i;
@@ -4825,17 +4994,22 @@ class Semnal isclass Signal
 		return sig;
 	}
 	
-	//Functia ce aplica modificarie la inchiderea ferestrei HTML
 	public void SetProperties(Soup sig)
 	{
 		int default_instr;
 
 		nextSignalName=sig.GetNamedTag("NextSignalName");
 		thisSignalDisplayName=sig.GetNamedTag("DisplayedName");
+		xxx=sig.GetNamedTagAsInt("xxx");
 		
 		if (is_dtv)
 		{
 			default_instr=1;
+		}
+		
+		if (is_mec)
+		{
+			default_instr=2;
 		}
 		
 		if (is_tmv)
@@ -4860,7 +5034,7 @@ class Semnal isclass Signal
 		SetFXNameText("name1"," ");
 		if (thisSignalDisplayName!="")
 		{ 
-			if (Str.ToInt(ST.GetString("pitic")))	//daca e pitic, nu imparti textul in doua
+			if (Str.ToInt(ST.GetString("PITIC")))	//daca e pitic, nu imparti textul in doua
 				SetFXNameText("name0",thisSignalDisplayName);
 			else	//daca nu e pitic, imparte textul pe doua randuri
 			{
@@ -4889,19 +5063,29 @@ class Semnal isclass Signal
 		verdemic=self.FindAsset("Greensmall");
 		verdeclipitor=self.FindAsset("Greenblink");
 		galbenclipitor=self.FindAsset("Yellowblink");
+		rosuclipitor=self.FindAsset("Redblink");
 		albclipitor=self.FindAsset("Whiteblink");
 		alblinie=self.FindAsset("Whiteline");
 		galbenclipitor2=self.FindAsset("Yellowblink2");
 
-		if (verde==null or galben==null or rosu==null or alb==null or albastru==null or albmic==null or verdemic==null or galbenmic==null or galbenclipitor==null or verdeclipitor==null or albclipitor==null or alblinie==null or galbenclipitor2==null)
+		if (verde==null or galben==null or rosu==null or alb==null or albastru==null or albmic==null or verdemic==null or galbenmic==null or galbenclipitor==null or verdeclipitor==null or rosuclipitor==null or albclipitor==null or alblinie==null or galbenclipitor2==null)
 		{
 			Interface.Log("Eroare semnale RO-CFR! Nu s-au gasit toate becurile!");
 			return;
 		}
 
+		if (Str.ToInt(ST.GetString("SIGNAL_MEC_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_MEC_REPEATER")) or Str.ToInt(ST.GetString("SIGNAL_MEC_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_MEC_SHUNT")))
+		{
+			is_mec=1;
+			is_dtv=0;
+			is_tmv=0;
+		}
+		
+		
 		//Daca e semnal DTV
 		if (Str.ToInt(ST.GetString("SIGNAL_DTV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_DTV_LINE_BLOCK")) or Str.ToInt(ST.GetString("SIGNAL_DTV_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_DTV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_DTV_REPEATER")) or Str.ToInt(ST.GetString("SIGNAL_DTV_FAULT")))
 		{
+			is_mec=0;
 			is_dtv=1;
 			is_tmv=0;
 		}
@@ -4909,6 +5093,7 @@ class Semnal isclass Signal
 		//Daca e semnal TMV
 		if (Str.ToInt(ST.GetString("SIGNAL_TMV_EXITENTRY")) or Str.ToInt(ST.GetString("SIGNAL_TMV_LINE_BLOCK")) or Str.ToInt(ST.GetString("SIGNAL_TMV_DISTANT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_SHUNT")) or Str.ToInt(ST.GetString("SIGNAL_TMV_REPEATER")) or Str.ToInt(ST.GetString("SIGNAL_TMV_FAULT")))
 		{
+			is_mec=0;
 			is_dtv=0;
 			is_tmv=1;
 			
@@ -4935,7 +5120,12 @@ class Semnal isclass Signal
 			direction=0;
 			Lightup_Direction_Marker();
 		}
-  
+		
+		next_aspect = 2; //Pentru a indica verde la initializare, oricum se face Update(); care actualizeaza aspectele.
+		
+		//Populeaza "constantele" cu ce trebuie afisat in HTML (vezi delaratiile de la inceputul clasei)
+		IncarcaStringurile();
+		
 		//Adauga Handlere pentru functionalitati
 		AddHandler(me,"SchimbareAspect","","Notify");	//Apelata cand s-a schimbat semnalul legat de acesta
 		AddHandler(me,"TransmiteStare","","Transmit_State");
@@ -4943,6 +5133,8 @@ class Semnal isclass Signal
 		AddHandler(me,"DezactivManevra","","ShuntDisable");	//Interzice manevra
 		AddHandler(me,"ActivAvarie","","FaultEnable");		//Activeaza avarie
 		AddHandler(me,"DezactivAvarie","","FaultDisable");	//Opreste avarie
+		AddHandler(me,"ActivChemare","","CallEnable");		//Activeaza chemare
+		AddHandler(me,"DezactivChemare","","CallDisable");	//Opreste chemare
 		AddHandler(me,"Signal","StateChanged","SignalChange");	//S-a schimbat aspectul semnalului
 		AddHandler(me,"Junction","Toggled","JunctionChange");	//S-a schimbat orientarea unui macaz
 		AddHandler(me,"Semnal","Subscribe","Subscribe");
