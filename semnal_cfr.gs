@@ -1,8 +1,8 @@
 //
 // RO CFR Signals Script
 // Version: 3.0
-// Build: 160327
-// Date: 27.03.2016 
+// Build: 160403
+// Date: 03.04.2016 
 // Author: vvmm (c) 2013-2016
 // Website: http://vvmm.freeforums.org/
 // 
@@ -15,7 +15,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-	define string BUILD = "v3.0 b160327";
+	define string BUILD = "v3.0 b160403";
 	
 	define int MARKER_LIMIT = 800; // limita maxima la care se cauta markeri
 	define int MACAZ_LIMIT = 1000; // doar pentru afisarea distantei
@@ -107,7 +107,7 @@ class Semnal isclass Signal
 	int memo_restrict = -2;
 	bool active_shunt, active_fault, active_chemare, xxx, trage_convoi;
 	int direction, restriction, ies_st, linie;
-	bool bla_left;
+	/*bool bla_left;*/
 	string numeAfisat;
 	
 	// variabile publice
@@ -655,7 +655,7 @@ class Semnal isclass Signal
 		
 		while (mo)
 		{
-			if (cast<Semnal>mo)
+			if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
 			{
 				break;
 			}
@@ -693,7 +693,7 @@ class Semnal isclass Signal
 		
 		while (mo)
 		{
-			if (cast<Semnal>mo)
+			if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
 			{
 				// sari peste semnalele de manevra care sunt intercalate cu cele de intrare
 				if ((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere))
@@ -1072,12 +1072,12 @@ class Semnal isclass Signal
 	// Get BLA signal state considering bla_left
 	//
 	int GetBLASignalState()
-	{
+	{   /*
 		if (config.GetNamedTagAsFloat("trackside") < 0)
 			if (World.GetTrainzVersion() > 4.0) // Train Approaching & Leaving does not exist prior to TANE
 				if (bla_left == true)
 					return 0;
-
+        */
 		return GetSignalState();
 	}
 	
@@ -4051,12 +4051,12 @@ class Semnal isclass Signal
 			{		
 				if (msg.minor == "Train Approaching")
 				{
-					bla_left = false;
+					/*bla_left = false;*/
 					UpdateAspect();
 				}
 				else if (msg.minor == "Train Leaving")
 				{
-					bla_left = true;
+					/*bla_left = true;*/
 					UpdateAspect();
 				}				
 			}	
@@ -4258,12 +4258,12 @@ class Semnal isclass Signal
 
 		if (signal_type == "TMV" and (has_bar or has_direction)) 
 			Letters = GetAsset().FindAsset("texture-lib");
-		
+		/*
 		if (config.GetNamedTagAsFloat("trackside") < 0 and (is_bla or is_bla4i))
 			bla_left = true;
 		else
 			bla_left = false;
-			
+		*/
 		InitialUpdate();
 					
 		// handler pentru mesaje
