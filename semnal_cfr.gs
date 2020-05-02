@@ -1,10 +1,11 @@
 //
 // RO CFR Signals Script
-// Version: 3.0
-// Build: 160403
-// Date: 03.04.2016 
-// Author: vvmm (c) 2013-2016
-// Website: http://vvmm.freeforums.org/
+// Version: 3.1
+// Build: 200502
+// Date: 02.05.2020
+// Author: SilverGreen93 (c) 2013-2020
+// MyTrainz ID: vvmm (474195)
+// Website: https://www.tapatalk.com/groups/vvmm/
 //
 
 include "signal.gs"
@@ -15,7 +16,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-    define string BUILD = "v3.0 b160403";
+    define string BUILD = "v3.1 b200502";
 
     // Definitiile becurilor (efectelor din config)
     define string B_ROSU = "0";
@@ -1019,7 +1020,7 @@ class Semnal isclass Signal
         if (isNull)
         {
             nextSignalID = null;
-            nextSignalName = "Nu exista";
+            nextSignalName = "nu există";
             //SetFXNameText("name0",  "-2");
             next_aspect = S_UNDEF;
         }
@@ -4187,7 +4188,7 @@ class Semnal isclass Signal
         string nume;
 
         if (numeAfisat == "")
-            nume = "Fara nume";
+            nume = "Fără nume";
         else
             nume = numeAfisat;
 
@@ -4196,24 +4197,24 @@ class Semnal isclass Signal
 
         output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
 
-        output.Print("<p>Numele afisat al semnalului este: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
+        output.Print("<p>Numele afișat al semnalului este: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
 
         if (is_bla or is_bla4i)
             output.Print("<p>" + HTMLWindow.CheckBox("live://property/bla_left", bla_left) + " Orientare de bloc pe linia din stînga a căii duble</p><br>");
 
         output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Scoate semnalul din uz</p><br>");
 
-		if (nextSignalName == "")
-			nextSignalName = "Fara nume";
-		output.Print("<p>Semnalul urmator direct: <font color=#ffff00><b>" + nextSignalName + "</b></font></p><br>");
-		
-		if (is_intrare or is_iesire or is_manevra)
-			output.Print("<p>Macazul urmator este la distanta de <font color=#ffff00><b>" + DistantaMacaz() + "</b></font> </p><br>");
-		else
-			output.Print("<p>Semnalul urmator este la distanta de <font color=#ffff00><b>" + DistantaSemnal() + "</b></font> </p><br>");
-		
-		output.Print("<p>Mai multe detalii la http://vvmm.freeforums.org/</p>");
-		
+        if (nextSignalName == "")
+            nextSignalName = "Fără nume";
+        output.Print("<p>Semnalul următor direct: <font color=#ffff00><b>" + nextSignalName + "</b></font></p><br>");
+
+        if (is_intrare or is_iesire or is_manevra)
+            output.Print("<p>Macazul următor este la distanța de <font color=#ffff00><b>" + DistantaMacaz() + "</b></font> </p><br>");
+        else
+            output.Print("<p>Semnalul următor este la distanța de <font color=#ffff00><b>" + DistantaSemnal() + "</b></font> </p><br>");
+
+        output.Print("<p>Pentru tutorial de configurare și mai multe detalii vizitați https://www.tapatalk.com/groups/vvmm/</p>");
+
         return output.AsString();
     }
 
