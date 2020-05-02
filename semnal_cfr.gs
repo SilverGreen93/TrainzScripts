@@ -17,7 +17,6 @@ class Semnal isclass Signal
 {
     define string BUILD = "v3.0 b160403";
 
-
     // Definitiile becurilor (efectelor din config)
     define string B_ROSU = "0";
     define string B_GALBEN = "1";
@@ -47,6 +46,7 @@ class Semnal isclass Signal
     define int S_ALBASTRU = 90;
     define int S_ALB = 91;
     define int S_CHEMARE = 92;
+    define int S_BLOC_INVERS = 93;
     define int T_GALBEN = 100;
     define int T_GALBEN_20 = 101;
     define int T_GALBEN_30 = 102;
@@ -102,13 +102,14 @@ class Semnal isclass Signal
 	int next_restrict = -1;
 	int memo_aspect = -2; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
 	int memo_restrict = -2;
-	bool active_shunt, active_fault, active_chemare, xxx, trage_convoi;
-	int direction, restriction, ies_st, linie;
-	/*bool bla_left;*/
-	string numeAfisat;
+    bool active_shunt, active_fault, active_chemare, xxx, trage_convoi;
+    int direction, restriction, ies_st, linie;
+    bool bla_left = false; // dacă semnalul BLA trebuie să respecte orientarea de bloc pe linia din stînga a căii duble
+    bool orientare_bla = true; // dacă semnalul BLA are orientarea de bloc activată în funcție de sosirea trenului
+    string numeAfisat;
 
     // variabile publice
-	public int this_aspect = -1;
+    public int this_aspect = -1;
     public bool is_iesire, is_intrare, is_bla, is_bla4i, is_prevestitor, is_pitic;
     public bool is_repetitor, is_manevra, is_avarie, is_triere, is_chemare, is_grup;
 
@@ -996,7 +997,7 @@ class Semnal isclass Signal
                 }
             }
             else if (cast<Signal>mo and GSTS.GetFacingRelativeToSearchDirection()) // daca avem semnale Trainz standard.
-			{
+            {
 				nextSignal = (cast<Signal>mo).GetId();
 				nextSignalName = (cast<Signal>mo).GetLocalisedName();
 				next_aspect = 0;
@@ -1051,18 +1052,16 @@ class Semnal isclass Signal
     }
 
 
-	//
-	// Get BLA signal state considering bla_left
-	//
-	int GetBLASignalState()
-	{   /*
-		if (config.GetNamedTagAsFloat("trackside") < 0)
-			if (World.GetTrainzVersion() > 4.0) // Train Approaching & Leaving does not exist prior to TANE
-				if (bla_left == true)
-					return 0;
-        */
-		return GetSignalState();
-	}
+    //
+    // Get BLA signal state considering orienarea de bloc
+    //
+    int GetBLASignalState()
+    {
+        if (orientare_bla == false) // dacă nu avem tren care vine spre semnal, atunci menține pe roșu
+            return S_BLOC_INVERS;
+
+        return GetSignalState();
+    }
 
 
     //
@@ -1073,7 +1072,7 @@ class Semnal isclass Signal
         // INTRARE sau IESIRE DTV 2
         if ((is_intrare or is_iesire) and lights_count == 2)
         {
-            if (GetSignalState() == RED or (next_aspect == -1))  
+            if (GetSignalState() == RED or (next_aspect == -1))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1154,7 +1153,7 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                 }
             }
-            else if (GetSignalState() == RED or (next_aspect == -1)) 
+            else if (GetSignalState() == RED or (next_aspect == -1))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1214,6 +1213,9 @@ class Semnal isclass Signal
                     break;
                 case S_CHEMARE:
                     this_aspect=S_GALBEN;
+                    break;
+                case S_BLOC_INVERS:
+                    this_aspect=S_VERDE;
                     break;
                 default:;
                 }
@@ -1373,8 +1375,19 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU_AV,rosu);
                 }
             }
-			else if (GetBLASignalState() == RED or (next_aspect == -1)) 
-			{
+            else if (GetBLASignalState() == S_BLOC_INVERS)
+            {
+                this_aspect = S_BLOC_INVERS;
+                if (this_aspect != memo_aspect)
+                {
+                    Notify();
+                    memo_aspect = S_BLOC_INVERS;
+                    LightsOff();
+                    SetFXAttachment(B_ROSU, rosu);
+                }
+            }
+            else if (GetBLASignalState() == RED or (next_aspect == -1))
+            {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
                 {
@@ -1700,7 +1713,7 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                 }
             }
-            else if (GetSignalState() == RED  or (next_aspect == -1)) 
+            else if (GetSignalState() == RED  or (next_aspect == -1))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1759,6 +1772,9 @@ class Semnal isclass Signal
                     break;
                 case S_CHEMARE:
                     this_aspect = S_GALBEN;
+                    break;
+                case S_BLOC_INVERS:
+                    this_aspect = S_VERDE;
                     break;
                 default:;
                 }
@@ -1940,6 +1956,9 @@ class Semnal isclass Signal
                     break;
                 case S_CHEMARE:
                     this_aspect=S_GALBEN;
+                    break;
+                case S_BLOC_INVERS:
+                    this_aspect=S_VERDE;
                     break;
                 default:;
                 }
@@ -2264,7 +2283,7 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                 }
             }
-            else if (GetSignalState() == RED or (next_aspect == -1)) 
+            else if (GetSignalState() == RED or (next_aspect == -1))
             {
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
@@ -3479,7 +3498,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU_AV,rosu);
                 }
             }
-            else if (GetBLASignalState()==RED or (next_aspect == -1)) 
+            else if (GetBLASignalState()==RED or (next_aspect == -1))
             {
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
@@ -3980,12 +3999,12 @@ class Semnal isclass Signal
         {
             string[] tok = Str.Tokens(msg.minor, "/");
 
-			//Interface.Print("###" + nextSignal + " - " + (cast<Signal>msg.src).GetId());
-			if (tok[0] == "stare")
-			{
-				// nu face update-uri aiurea, doar daca e necesar
-				if (nextSignal == (cast<Signal>msg.src).GetId())
-				{	
+            //Interface.Print("###" + nextSignal + " - " + (cast<Signal>msg.src).GetId());
+            if (tok[0] == "stare")
+            {
+                // nu face update-uri aiurea, doar daca e necesar
+                if (nextSignal == (cast<Signal>msg.src).GetId())
+                {
                     next_aspect = Str.ToInt(tok[1]);
                     UpdateAspect();
                 }
@@ -4030,28 +4049,28 @@ class Semnal isclass Signal
             if (msg.dst != me)
                 return;
 
-			if (config.GetNamedTagAsFloat("trackside") < 0 and (is_bla or is_bla4i))
-			{		
-				if (msg.minor == "Train Approaching")
-				{
-					/*bla_left = false;*/
-					UpdateAspect();
-				}
-				else if (msg.minor == "Train Leaving")
-				{
-					/*bla_left = true;*/
-					UpdateAspect();
-				}				
-			}	
+            if (bla_left and (is_bla or is_bla4i))
+            {
+                if (msg.minor == "Train Approaching")
+                {
+                    orientare_bla = true; // schimbă orientarea de bloc dacă se apropie un tren
+                    UpdateAspect();
+                }
+                else if (msg.minor == "Train Leaving")
+                {
+                    orientare_bla = false; // reaplică orientarea de bloc dacă trenul se îndepărtează
+                    UpdateAspect();
+                }
+            }
         }
         else if (msg.major == "Junction")
         {
             if (msg.minor == "Toggled")
             {
                 int i;
-				for (i = 0; i < junctionList.size(); ++i)
+                for (i = 0; i < junctionList.size(); ++i)
 					if (junctionList[i] == (cast<Junction>msg.src).GetId())
-					{	
+					{
                         // nu face update-uri aiurea, doar daca e necesar
                         UpdateAll();
                         break;
@@ -4085,7 +4104,11 @@ class Semnal isclass Signal
         inherited(soup);
         numeAfisat = soup.GetNamedTag("numeAfisat");
         xxx = soup.GetNamedTagAsBool("xxx", false);
-
+        bla_left = soup.GetNamedTagAsBool("bla_left", false);
+        
+        if (bla_left == true)
+            orientare_bla = false; // initial daca avem activat bla_left trebuie sa punem semnalele pe rosu
+        UpdateAspect();
         SetSignalName(numeAfisat);
     }
 
@@ -4094,6 +4117,7 @@ class Semnal isclass Signal
         Soup soup = inherited();
         soup.SetNamedTag("numeAfisat", numeAfisat);
         soup.SetNamedTag("xxx", xxx);
+        soup.SetNamedTag("bla_left", bla_left);
         return soup;
     }
 
@@ -4115,6 +4139,12 @@ class Semnal isclass Signal
             memo_aspect = -1;
             UpdateAspect();
         }
+        else if (propertyID == "bla_left")
+        {
+            bla_left = !bla_left;
+            memo_aspect = -1;
+            UpdateAspect();
+        }
     }
 
     string GetPropertyType(string propertyID)
@@ -4124,6 +4154,8 @@ class Semnal isclass Signal
         if (propertyID == "name")
             return "string,0,8";
         else if (propertyID == "disabled")
+            return "link";
+        else if (propertyID == "bla_left")
             return "link";
 
         return "link";
@@ -4150,18 +4182,22 @@ class Semnal isclass Signal
         HTMLBuffer output = HTMLBufferStatic.Construct();
         string nume;
 
-        if (numeAfisat == "") 
-			nume = "Fara nume";
-		else
-			nume = numeAfisat;
-		
-		output.Print("<p><font size=15>Semnal RO CFR </font><font size=5>" + BUILD + "</font></p><br>");
-		output.Print("<p>Pentru configurarea semnalului se folosesc markeri.</p>");
-		
-		output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
-		
-		output.Print("<p>Numele afisat al semnalului este: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
-		output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Scoate semnalul din uz</p><br>");
+        if (numeAfisat == "")
+            nume = "Fara nume";
+        else
+            nume = numeAfisat;
+
+        output.Print("<p><font size=15>Semnal RO CFR </font><font size=5>" + BUILD + "</font></p><br>");
+        output.Print("<p>Pentru configurarea semnalului se folosesc markeri.</p>");
+
+        output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
+
+        output.Print("<p>Numele afisat al semnalului este: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
+
+        if (is_bla or is_bla4i)
+            output.Print("<p>" + HTMLWindow.CheckBox("live://property/bla_left", bla_left) + " Orientare de bloc pe linia din stînga a căii duble</p><br>");
+
+        output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Scoate semnalul din uz</p><br>");
 
 		if (nextSignalName == "")
 			nextSignalName = "Fara nume";
@@ -4174,15 +4210,15 @@ class Semnal isclass Signal
 		
 		output.Print("<p>Mai multe detalii la http://vvmm.freeforums.org/</p>");
 		
-		return output.AsString();
-	}
-	
-	//
-	// Wait for IDs to be assigned by Trainz
-	//
-	thread void InitialUpdate()
-	{
-		while (GetId() == -1)
+        return output.AsString();
+    }
+
+    //
+    // Wait for IDs to be assigned by Trainz
+    //
+    thread void InitialUpdate()
+    {
+        while (GetId() == -1)
             Sleep(1.0);
         UpdateAll();
     }
@@ -4241,12 +4277,7 @@ class Semnal isclass Signal
 
         if (signal_type == "TMV" and (has_bar or has_direction))
             Letters = GetAsset().FindAsset("texture-lib");
-		/*
-		if (config.GetNamedTagAsFloat("trackside") < 0 and (is_bla or is_bla4i))
-			bla_left = true;
-		else
-			bla_left = false;
-		*/
+
         InitialUpdate();
 
         // handler pentru mesaje
@@ -4254,6 +4285,5 @@ class Semnal isclass Signal
         AddHandler(me, "Junction", "Toggled", "MessageHandler");
         AddHandler(me, "Signal", "", "MessageHandler");
     }
-
 
 };
