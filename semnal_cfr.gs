@@ -703,9 +703,14 @@ class Semnal isclass Signal
                 if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_vr-474195", 0))
                 {
                     found_restriction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_vr-474195");
-                    // daca avem semnal de manevra dedicat nu mai afisez manevra
+
+                    // daca avem semnal de manevra dedicat nu mai afisez manevra pe semnal de intrare/iesire
                     if (!((found_restriction == R_MANEVRA and found_manevra) and (is_intrare or is_iesire or is_triere)))
                         restriction = found_restriction;
+
+                    //daca avem semnal de manevra si am gasit marker de manevra, nu mai cauta alti markeri
+                    if (is_manevra and !(is_intrare or is_iesire or is_triere) and restriction == R_MANEVRA)
+                        break;
 
                     if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker restrictie = " + restriction);
                 }
