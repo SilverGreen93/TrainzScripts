@@ -1,8 +1,8 @@
 //
 // RO CFR Signals Script
 // Version: 3.1
-// Build: 200502
-// Date: 02.05.2020
+// Build: 200503
+// Date: 03.05.2020
 // Author: SilverGreen93 (c) 2013-2020
 // MyTrainz ID: vvmm (474195)
 // Website: https://www.tapatalk.com/groups/vvmm/
@@ -16,7 +16,8 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-    define string BUILD = "v3.1 b200502";
+    define string BUILD = "v3.1 b200503";
+    define bool DEBUG = false;
 
     // Definitiile becurilor (efectelor din config)
     define string B_ROSU = "0";
@@ -91,7 +92,6 @@ class Semnal isclass Signal
 
     // variabile locale
     string signal_type;
-
 
     int has_bar, has_direction, lights_count;
     Asset rosu, galben, verde, alb, albastru, albmic, galbenmic, verdemic;
@@ -677,12 +677,15 @@ class Semnal isclass Signal
         direction = 0;
         ies_st = 0;
         if (signal_type == "TMV")
-            restriction = 10;
+            restriction = R_TVS;
         else
-            restriction = 0;
+            restriction = R_VS;
 
+        int found_restriction = R_VS;
         bool found_manevra = false;
-
+        
+        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : FindMarker");
+        
         while (mo)
         {
             if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
@@ -694,22 +697,27 @@ class Semnal isclass Signal
                     break;
             }
 
+            //Întotdeauna găsește ultimul marker. De exemplu dacă ai mai multe linii abătute și întîlnește mai multe direcții/restricții, ultimul întîlnit e cel afișat.
             if (GSTS.GetFacingRelativeToSearchDirection())
             {
-                if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_dir-474195", 0))
-                {
-                    direction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_dir-474195");
-                }
                 if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_vr-474195", 0))
                 {
-                    restriction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_vr-474195");
+                    found_restriction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_vr-474195");
                     // daca avem semnal de manevra dedicat nu mai afisez manevra
-                    if ((restriction == R_MANEVRA and found_manevra) and (is_intrare or is_iesire or is_triere))
-                        restriction = 0;
+                    if (!((found_restriction == R_MANEVRA and found_manevra) and (is_intrare or is_iesire or is_triere)))
+                        restriction = found_restriction;
+
+                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker restrictie = " + restriction);
                 }
-                if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsBool("rosig_st-474195", false))
+                else if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_dir-474195", 0))
+                {
+                    direction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_dir-474195");
+                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker direcție = " + direction);
+                }
+                else if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsBool("rosig_st-474195", false))
                 {
                     ies_st = 1;
+                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker ieșire stînga = " + ies_st);
                 }
             }
             mo = GSTS.SearchNext();
@@ -973,38 +981,44 @@ class Semnal isclass Signal
         MapObject mo = GSTS.SearchNext();
 
         junctionIDList[0, junctionIDList.size()] = null;
-
+        
+        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : LinkSemnal");
+        
         while (mo)
         {
             if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
             {
-                //Interface.Log("RO CFR> " + GetLocalisedName() + " Semnal gasit: " + mo.GetLocalisedName());
-                nextSignalID = (cast<Semnal>mo).GetGameObjectID();
-                nextSignalName = (cast<Semnal>mo).GetLocalisedName();
+                nextSignalID = mo.GetGameObjectID();
+                nextSignalName = mo.GetLocalisedName();
                 next_aspect = (cast<Semnal>mo).this_aspect;
+                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Semnal găsit = " + nextSignalName);
                 //SetFXNameText("name0", "NS: " + nextSignalName);
                 //SetFXNameText("name1", "NA: " + next_aspect);
-                break;
+                // opreste cautarea doar daca ai intilnit orice alt semnal in afara de manevra
+                if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
+                    break;
             }
             else if (cast<Signal>mo and GSTS.GetFacingRelativeToSearchDirection()) // daca avem semnale Trainz standard.
             {
                 nextSignalID = (cast<Signal>mo).GetGameObjectID();
                 nextSignalName = (cast<Signal>mo).GetLocalisedName();
+                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Semnal Trainz standard găsit = " + nextSignalName);
                 next_aspect = S_ROSU;
                 break;
             }
             else if (cast<Junction>mo)
             {
-                //Interface.Print(GetName() + ": Macaz gasit: " + mo.GetName() + " " + mo.GetGameObjectID());
-                junctionIDList[junctionIDList.size()] = (cast<Junction>mo).GetGameObjectID();
+                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Macaz găsit = " + mo.GetLocalisedName());
+                junctionIDList[junctionIDList.size()] = mo.GetGameObjectID();
             }
             mo = GSTS.SearchNext();
         }
 
-        /*Interface.Print(GetName() + ": junctionIDList: ");
-        int i;
-        for (i=0;i<junctionIDList.size();++i)
-            Interface.Print("  -> " + junctionIDList[i].GetName());*/
+        //DEBUG: Printează toată lista de macazuri
+        //Interface.Log(GetLocalisedName() + ": junctionIDList: ");
+        //int i;
+        //for (i=0;i<junctionIDList.size();++i)
+        //    Interface.Log("  -> " + junctionIDList[i].GetName());
 
         // daca e de grup ne intereseaza si macazul de dinainte
         if (is_grup)
@@ -1015,7 +1029,8 @@ class Semnal isclass Signal
             {
                 if (cast<Junction>mo)
                 {
-                    junctionIDList[junctionIDList.size()] = (cast<Junction>mo).GetGameObjectID();
+                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Macaz grup găsit = " + mo.GetLocalisedName());
+                    junctionIDList[junctionIDList.size()] = mo.GetGameObjectID();
                     break;
                 }
                 mo = GSTS.SearchNext();
@@ -1029,6 +1044,7 @@ class Semnal isclass Signal
     //
     void Notify()
     {
+        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Trimite stare (broadcast) = stare/" + this_aspect);
         PostMessage(null, "Semnal", "stare/" + this_aspect, 0.0);
     }
 
@@ -3976,14 +3992,13 @@ class Semnal isclass Signal
     {
         if (msg.major == "Semnal")
         {
-            //Interface.Log("RO CFR> " + GetLocalisedName() + " : "  + msg.minor + " (next: " + nextSignalName + ")");
+            if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Primit mesaj Semnal "  + msg.minor + " de la " + (cast<Semnal>msg.src).GetLocalisedName());
             string[] tok = Str.Tokens(msg.minor, "/");
 
-            //Interface.Print("###" + nextSignalID + " - " + (cast<Signal>msg.src).GetGameObjectID());
             if (tok[0] == "stare")
             {
                 // nu face update-uri aiurea, doar daca e necesar
-                if (nextSignalID and nextSignalID.DoesMatch((cast<Signal>msg.src).GetGameObjectID()))
+                if (nextSignalID and nextSignalID.DoesMatch((cast<Semnal>msg.src).GetGameObjectID()))
                 {
                     next_aspect = Str.ToInt(tok[1]);
                     UpdateAspect();
@@ -4020,7 +4035,7 @@ class Semnal isclass Signal
         {
             if (msg.minor == "State Changed")
             {
-                //Interface.Log("RO CFR> " + GetLocalisedName() + " : "  + msg.minor);
+                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Primit mesaj Signal "  + msg.minor + " de la " + (cast<Signal>msg.src).GetLocalisedName());
                 if (msg.src == me)
                 { // my aspect has changed
                     UpdateAll();
@@ -4049,10 +4064,12 @@ class Semnal isclass Signal
             if (msg.minor == "Toggled")
             {
                 int i;
+                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Primit mesaj Junction Toggled");
                 for (i = 0; i < junctionIDList.size(); ++i)
                     if (junctionIDList[i] and junctionIDList[i].DoesMatch((cast<Junction>msg.src).GetGameObjectID()))
                     {
                         // nu face update-uri aiurea, doar daca e necesar
+                        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Macazul " + (cast<Junction>msg.src).GetLocalisedName() + " e pe lista mea");
                         UpdateAll();
                         break;
                     }
@@ -4086,7 +4103,7 @@ class Semnal isclass Signal
         numeAfisat = soup.GetNamedTag("numeAfisat");
         xxx = soup.GetNamedTagAsBool("xxx", false);
         bla_left = soup.GetNamedTagAsBool("bla_left", false);
-        
+
         if (bla_left == true)
             orientare_bla = false; // initial daca avem activat bla_left trebuie sa punem semnalele pe rosu
         UpdateAspect();
@@ -4199,6 +4216,7 @@ class Semnal isclass Signal
     //
     thread void InitialUpdate()
     {
+        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : InitialUpdate pentru " + GetDebugName());
         while (GetGameObjectID() == null)
             Sleep(1.0);
         UpdateAll();
