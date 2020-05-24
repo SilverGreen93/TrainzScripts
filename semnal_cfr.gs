@@ -1,8 +1,8 @@
 //
 // RO CFR Signals Script
 // Version: 3.1
-// Build: 200503
-// Date: 03.05.2020
+// Build: 200524
+// Date: 24.05.2020
 // Author: SilverGreen93 (c) 2013-2020
 // MyTrainz ID: vvmm (474195)
 // Website: https://www.tapatalk.com/groups/vvmm/
@@ -16,7 +16,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-    define string BUILD = "v3.1 b200503";
+    define string BUILD = "v3.1 b200524";
     define bool DEBUG = false;
 
     // Definitiile becurilor (efectelor din config)
@@ -3499,6 +3499,17 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU_AV,rosu);
                 }
             }
+            else if (GetBLASignalState() == S_BLOC_INVERS)
+            {
+                this_aspect = S_BLOC_INVERS;
+                if (this_aspect != memo_aspect)
+                {
+                    Notify();
+                    memo_aspect = S_BLOC_INVERS;
+                    LightsOff();
+                    SetFXAttachment(B_ROSU, rosu);
+                }
+            }
             else if (GetBLASignalState()==RED or (next_aspect == S_UNDEF))
             {
                 this_aspect=S_ROSU;
@@ -3965,6 +3976,11 @@ class Semnal isclass Signal
         if (xxx)
         {
             LightsOff();
+            LightThisLimit(0);
+            LightNextLimit(0);
+            LightBar(0);
+            LightDirection(0);
+            LightLinie(0);
             SetFXAttachment("xxx", GetAsset().FindAsset("xxx"));
             this_aspect = next_aspect;
             Notify();
