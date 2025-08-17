@@ -86,8 +86,8 @@ class Semnal isclass Signal
     define int R_T30 = 5;
     define int R_T60 = 6;
     define int R_T80 = 7;
-    define int R_T100 = 9;
     define int R_T90 = 8;
+    define int R_T100 = 9;
     define int R_TVS = 10;
     define int R_MANEVRA = 91;
     define int R_CHEMARE = 92;
@@ -113,8 +113,8 @@ class Semnal isclass Signal
     int next_restrict = R_UNDEF;
     int memo_aspect = S_NOMEMO; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
     int memo_restrict = R_NOMEMO;
-    bool active_shunt, active_fault, active_chemare, xxx, active_triere;
-    int special_restrict; // daca este activa restrictie de chemare, avarie, manevra sau triere, aceasta va fi memorata aici
+    bool active_shunt, active_fault, active_chemare, xxx;
+    bool special_restrict; // daca este activa restrictie de triere
     int direction, restriction, ies_st, linie;
     bool bla_left = false; // dacă semnalul BLA trebuie să respecte orientarea de bloc pe linia din stînga a căii duble
     bool orientare_bla = true; // dacă semnalul BLA are orientarea de bloc activată în funcție de sosirea trenului
@@ -1104,6 +1104,7 @@ class Semnal isclass Signal
         return GetSignalState();
     }
 
+
     //
     // Update Triere Signal State
     //
@@ -1111,80 +1112,74 @@ class Semnal isclass Signal
     {
         FindMarker();
 
-        if (active_chemare or restriction == R_CHEMARE)
+        if (!special_restrict and restriction != R_VS)
         {
-            // IMPINGE CONVOIUL PINA LA VIRF
-            this_aspect = S_CHEMARE;
-            if (this_aspect != memo_aspect)
-            {
-                memo_aspect = this_aspect;
-                Notify();
-                LightsOff();
-                LightDirection(0);
+            if (restriction == R_CHEMARE)
+                this_aspect = S_CHEMARE;
+            else if (restriction == R_MANEVRA)
+                this_aspect = S_ALB;
+            else
+                this_aspect = S_ROSU;
 
-                SetFXAttachment(B_ALB, albclipitor);
-                SetSpeedLimit(20/3.6);
-                //SetSignalState(null, GREEN, "Depășire permisă");
-            }
+            if (DEBUG)
+                Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Marker restriction active: " + this_aspect);
         }
-        else if (active_shunt or restriction == R_MANEVRA)
+        else if (special_restrict)
         {
-            // MANEVRA PERMISA
-            this_aspect = S_ALB;
-            if (this_aspect != memo_aspect)
-            {
-                memo_aspect = this_aspect;
-                Notify();
-                LightsOff();
-                LightDirection(0);
-
-                SetFXAttachment(B_ALB, alb);
-                SetSpeedLimit(20/3.6);
-                //SetSignalState(null, GREEN, "Manevra permisă");
-            }
-        }
-        else if (active_triere)
-        {
-            // TRIERE ACTIVA
-            // this_aspect e deja setat la primirea mesajului
-            if (this_aspect != memo_aspect)
-            {
-                memo_aspect = this_aspect;
-                Notify();
-                LightsOff();
-                LightDirection(0);
-
-                switch (this_aspect)
-                {
-                    case S_TRIERE_OPRIT:
-                        SetFXAttachment(B_ROSU, rosu);
-                        break;
-                    case S_TRIERE_INCET:
-                        SetFXAttachment(B_GALBEN, galben);
-                        break;
-                    case S_TRIERE_REPEDE:
-                        SetFXAttachment(B_VERDE, verde);
-                        break;
-                    case S_TRIERE_TRAGE:
-                        SetFXAttachment(B_ROSU, rosuclipitor);
-                        SetSpeedLimit(20/3.6);
-                        break;
-                    default:;
-                }
-            }
+            // primit mesaj cu restrictie speciala
+            // this_aspect e deja setat in MessageHandler
+            if (DEBUG)
+                Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Special restriction active: " + this_aspect);
         }
         else
         {
+            // nu avem restrictie speciala sau marker, ordona oprirea
             this_aspect = S_ROSU;
-            if (this_aspect != memo_aspect)
+        }
+
+        if (DEBUG)
+            Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : this_aspect: " + this_aspect + " memo_aspect: " + memo_aspect);
+
+        // seteaza aspectul semnalului
+        if (this_aspect != memo_aspect)
+        {
+            memo_aspect = this_aspect;
+            Notify();
+            LightsOff();
+
+            switch (this_aspect)
             {
-                memo_aspect = this_aspect;
-                Notify();
-                LightsOff();
-                SetFXAttachment(B_ROSU, rosu);
+                case S_ROSU:
+                    SetFXAttachment(B_ROSU, rosu);
+                    break;
+                case S_TRIERE_OPRIT:
+                    SetFXAttachment(B_ROSU, rosu);
+                    break;
+                case S_TRIERE_INCET:
+                    SetFXAttachment(B_GALBEN, galben);
+                    break;
+                case S_TRIERE_REPEDE:
+                    SetFXAttachment(B_VERDE, verde);
+                    break;
+                case S_CHEMARE:
+                    SetFXAttachment(B_ALB, albclipitor);
+                    SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Depășire permisă");
+                    break;
+                case S_TRIERE_TRAGE:
+                    SetFXAttachment(B_ROSU, rosuclipitor);
+                    SetSpeedLimit(20/3.6);
+                    break;
+                case S_ALB:
+                    SetFXAttachment(B_ALB, alb);
+                    SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
+                    break;
+                default:;
             }
         }
     }
+
 
     //
     // Update DTV Signal State
@@ -3992,7 +3987,7 @@ class Semnal isclass Signal
         }
         else
         {
-            // if (!active_fault and !active_shunt and !active_chemare and !active_triere)
+            // if (!active_fault and !active_shunt and !active_chemare)
             // {
             //     SetSignalState(null, GREEN, "");
             //     SetSignalState(null, AUTOMATIC, "");
@@ -4066,7 +4061,7 @@ class Semnal isclass Signal
                     active_shunt = false;
                     active_fault = false;
                     active_chemare = false;
-                    active_triere = false;
+                    special_restrict = false;
                 }
                 else if (Str.ToInt(tok[1]) == S_ALB)
                     active_shunt = true;
@@ -4074,12 +4069,9 @@ class Semnal isclass Signal
                     active_chemare = true;
                 else if (Str.ToInt(tok[1]) == S_ROSU_AV)
                     active_fault = true;
-                else if (S_TRIERE_OPRIT <= Str.ToInt(tok[1]) and Str.ToInt(tok[1]) <= S_TRIERE_TRAGE)
-                {
-                    active_triere = true;
-                    // seteaza aspectul de triere
-                    this_aspect = Str.ToInt(tok[1]);
-                }
+
+                special_restrict = true;
+                this_aspect = Str.ToInt(tok[1]);
 
                 UpdateAspect();
             }
