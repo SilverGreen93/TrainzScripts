@@ -91,6 +91,7 @@ class Semnal isclass Signal
 
     // variabile locale
     string signal_type;
+    string html_title;
 
     int has_bar, has_direction, lights_count;
     Asset rosu, galben, verde, alb, albastru, albmic, galbenmic, verdemic;
@@ -4205,7 +4206,7 @@ class Semnal isclass Signal
         else
             nume = numeAfisat;
 
-        output.Print("<p><font size=15>Semnal RO CFR </font><font size=5>" + BUILD + "</font></p><br>");
+        output.Print("<p><font size=15>" + html_title + " signal </font><font size=5>" + BUILD + "</font></p><br>");
         output.Print("<p>Pentru configurarea semnalului se folosesc markeri.</p>");
 
         output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
@@ -4286,6 +4287,11 @@ class Semnal isclass Signal
         albclipitor = self.FindAsset("whiteblink");
         alblinie = self.FindAsset("whiteline");
         galbenclipitor2 = self.FindAsset("yellowblink2");
+
+        if (signal_type == "MEC_DR")
+            html_title = "DR";
+        else
+            html_title = "RO CFR";
 
         LightsOff();
         LightThisLimit(0);
