@@ -101,7 +101,7 @@ class Semnal isclass Signal
 
     GameObjectID[] junctionIDList = new GameObjectID[0];
     GameObjectID nextSignalID = null;
-    string nextSignalName = "nu există";
+    string nextSignalName = "does not exist";
 
     int next_aspect = S_UNDEF;
     int next_restrict = R_UNDEF;
@@ -125,7 +125,7 @@ class Semnal isclass Signal
     {
         GSTrackSearch GSTS = BeginTrackSearch(true);
         MapObject mo = GSTS.SearchNext();
-        string dist = "nu există";
+        string dist = "does not exist";
         while (mo)
         {
             if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
@@ -146,7 +146,7 @@ class Semnal isclass Signal
     {
         GSTrackSearch GSTS = BeginTrackSearch(true);
         MapObject mo = GSTS.SearchNext();
-        string dist = "nu există";
+        string dist = "does not exist";
         while (mo)
         {
             if (cast<Junction>mo)
@@ -684,7 +684,7 @@ class Semnal isclass Signal
         int found_restriction = R_VS;
         bool found_manevra = false;
         
-        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : FindMarker");
+        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : FindMarker");
         
         while (mo)
         {
@@ -712,17 +712,17 @@ class Semnal isclass Signal
                     if (is_manevra and !(is_intrare or is_iesire or is_triere) and restriction == R_MANEVRA)
                         break;
 
-                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker restrictie = " + restriction);
+                    if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Găsit marker restrictie = " + restriction);
                 }
                 else if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_dir-474195", 0))
                 {
                     direction = mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt("rosig_dir-474195");
-                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker direcție = " + direction);
+                    if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Găsit marker direcție = " + direction);
                 }
                 else if (mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsBool("rosig_st-474195", false))
                 {
                     ies_st = 1;
-                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Găsit marker ieșire stînga = " + ies_st);
+                    if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Găsit marker ieșire stînga = " + ies_st);
                 }
             }
             mo = GSTS.SearchNext();
@@ -735,7 +735,7 @@ class Semnal isclass Signal
     //
     void LightsOff()
     {
-        if (signal_type == "MEC")
+        if (signal_type == "MEC" or signal_type == "MEC_DR")
         {
             if (is_repetitor)
             { // MECANIC REPETITOR
@@ -785,7 +785,10 @@ class Semnal isclass Signal
                     SetFXCoronaTexture(B_GALBEN, null);
                     SetFXCoronaTexture(B_GAL_JOS, null);
                     SetMeshAnimationFrame("default", 0, 2);
+                    if (signal_type == "MEC")
                     SetMeshAnimationFrame("paleta", 60, 1);
+                    else if (signal_type == "MEC_DR")
+                        SetMeshAnimationState("paleta", false);
                 }
                 else
                 {
@@ -987,7 +990,7 @@ class Semnal isclass Signal
 
         junctionIDList[0, junctionIDList.size()] = null;
         
-        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : LinkSemnal");
+        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : LinkSemnal");
         
         while (mo)
         {
@@ -996,7 +999,7 @@ class Semnal isclass Signal
                 nextSignalID = mo.GetGameObjectID();
                 nextSignalName = mo.GetLocalisedName();
                 next_aspect = (cast<Semnal>mo).this_aspect;
-                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Semnal găsit = " + nextSignalName);
+                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Semnal găsit = " + nextSignalName);
                 //SetFXNameText("name0", "NS: " + nextSignalName);
                 //SetFXNameText("name1", "NA: " + next_aspect);
                 // opreste cautarea doar daca ai intilnit orice alt semnal in afara de manevra
@@ -1007,13 +1010,13 @@ class Semnal isclass Signal
             {
                 nextSignalID = (cast<Signal>mo).GetGameObjectID();
                 nextSignalName = (cast<Signal>mo).GetLocalisedName();
-                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Semnal Trainz standard găsit = " + nextSignalName);
+                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Semnal Trainz standard găsit = " + nextSignalName);
                 next_aspect = S_ROSU;
                 break;
             }
             else if (cast<Junction>mo)
             {
-                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Macaz găsit = " + mo.GetLocalisedName());
+                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macaz găsit = " + mo.GetLocalisedName());
                 junctionIDList[junctionIDList.size()] = mo.GetGameObjectID();
             }
             mo = GSTS.SearchNext();
@@ -1034,7 +1037,7 @@ class Semnal isclass Signal
             {
                 if (cast<Junction>mo)
                 {
-                    if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Macaz grup găsit = " + mo.GetLocalisedName());
+                    if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macaz grup găsit = " + mo.GetLocalisedName());
                     junctionIDList[junctionIDList.size()] = mo.GetGameObjectID();
                     break;
                 }
@@ -1049,7 +1052,7 @@ class Semnal isclass Signal
     //
     void Notify()
     {
-        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Trimite stare (broadcast) = stare/" + this_aspect);
+        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Trimite stare (broadcast) = stare/" + this_aspect);
         PostMessage(null, "Semnal", "stare/" + this_aspect, 0.0);
     }
 
@@ -2161,17 +2164,26 @@ class Semnal isclass Signal
                 {
                 case S_GALBEN:
                     SetMeshAnimationFrame("default",0,2);
+                    if (signal_type == "MEC")
                     SetMeshAnimationFrame("paleta",60,1);
+                    else if (signal_type == "MEC_DR")
+                        SetMeshAnimationState("paleta", false);
                     SetFXCoronaTexture(B_GALBEN,galben);
                     break;
                 case S_VERDE:
                     SetMeshAnimationFrame("default",120,2);
+                    if (signal_type == "MEC")
                     SetMeshAnimationFrame("paleta",60,1);
+                    else if (signal_type == "MEC_DR")
+                        SetMeshAnimationState("paleta", false);
                     SetFXCoronaTexture(B_GALBEN,verde);
                     break;
                 case S_GAL_GAL:
                     SetMeshAnimationFrame("default",0,2);
+                    if (signal_type == "MEC")
                     SetMeshAnimationFrame("paleta",90,1);
+                    else if (signal_type == "MEC_DR")
+                        SetMeshAnimationState("paleta", true);
                     SetFXCoronaTexture(B_GALBEN,galben);
                     SetFXCoronaTexture(B_GAL_JOS,galben);
                     break;
@@ -3990,7 +4002,7 @@ class Semnal isclass Signal
             SetFXAttachment("xxx", null);
             if (signal_type == "DTV")
                 UpdateDTV();
-            else if (signal_type == "MEC")
+            else if (signal_type == "MEC" or signal_type == "MEC_DR")
                 UpdateMEC();
             else if (signal_type == "TMV")
                 UpdateTMV();
@@ -4013,8 +4025,17 @@ class Semnal isclass Signal
     {
         if (msg.major == "Semnal")
         {
-            if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Primit mesaj Semnal "  + msg.minor + " de la " + (cast<Semnal>msg.src).GetLocalisedName());
             string[] tok = Str.Tokens(msg.minor, "/");
+
+            if (DEBUG) {
+                if (cast<Signal>msg.src) {
+                    Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Primit mesaj Semnal " + msg.minor + " de la " + (cast<Signal>msg.src).GetLocalisedName());
+                }
+                else
+                {
+                    Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Primit mesaj Semnal " + msg.minor + " de la " + (cast<GameObject>msg.src).GetDebugName());
+                }
+            }
 
             if (tok[0] == "stare")
             {
@@ -4056,7 +4077,7 @@ class Semnal isclass Signal
         {
             if (msg.minor == "State Changed")
             {
-                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Primit mesaj Signal "  + msg.minor + " de la " + (cast<Signal>msg.src).GetLocalisedName());
+                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Primit mesaj Signal "  + msg.minor + " de la " + (cast<Signal>msg.src).GetLocalisedName());
                 if (msg.src == me)
                 { // my aspect has changed
                     UpdateAll();
@@ -4085,12 +4106,12 @@ class Semnal isclass Signal
             if (msg.minor == "Toggled")
             {
                 int i;
-                if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Primit mesaj Junction Toggled");
+                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Primit mesaj Junction Toggled");
                 for (i = 0; i < junctionIDList.size(); ++i)
                     if (junctionIDList[i] and junctionIDList[i].DoesMatch((cast<Junction>msg.src).GetGameObjectID()))
                     {
                         // nu face update-uri aiurea, doar daca e necesar
-                        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : Macazul " + (cast<Junction>msg.src).GetLocalisedName() + " e pe lista mea");
+                        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macazul " + (cast<Junction>msg.src).GetLocalisedName() + " e pe lista mea");
                         UpdateAll();
                         break;
                     }
@@ -4183,7 +4204,7 @@ class Semnal isclass Signal
     public string GetPropertyName(string propertyID)
     {
         if (propertyID == "name")
-            return "Alege un nume de afisat";
+            return "Choose a display name";
 
         return "null";
     }
@@ -4202,32 +4223,32 @@ class Semnal isclass Signal
         string nume;
 
         if (numeAfisat == "")
-            nume = "Fără nume";
+            nume = "(no name)";
         else
             nume = numeAfisat;
 
         output.Print("<p><font size=15>" + html_title + " signal </font><font size=5>" + BUILD + "</font></p><br>");
-        output.Print("<p>Pentru configurarea semnalului se folosesc markeri.</p>");
+        output.Print("<p>To configure the signal aspects you must place line markers after the signal (RO_mrk_...).</p><br>");
 
-        output.Print("<p>Semnalul este de tip " + signal_type + "</p><br>");
+        output.Print("<p>Signal type: " + signal_type + "</p><br>");
 
-        output.Print("<p>Numele afișat al semnalului este: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
+        output.Print("<p>Name displayed on the signal: <font color=#ffff00><a href=live://property/name>" + nume + "</a></font></p><br>");
 
         if (is_bla or is_bla4i)
-            output.Print("<p>" + HTMLWindow.CheckBox("live://property/bla_left", bla_left) + " Orientare de bloc pe linia din stînga a căii duble</p><br>");
+            output.Print("<p>" + HTMLWindow.CheckBox("live://property/bla_left", bla_left) + " Line block orientation for left-side double track</p><br>");
 
-        output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Scoate semnalul din uz</p><br>");
+        output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Signal is out of order</p><br>");
 
         if (nextSignalName == "")
-            nextSignalName = "Fără nume";
-        output.Print("<p>Semnalul următor direct: <font color=#ffff00><b>" + nextSignalName + "</b></font></p><br>");
+            nextSignalName = "Without name";
+        output.Print("<p>Next direct signal: <font color=#ffff00><b>" + nextSignalName + "</b></font></p><br>");
 
         if (is_intrare or is_iesire or is_manevra)
-            output.Print("<p>Macazul următor este la distanța de <font color=#ffff00><b>" + DistantaMacaz() + "</b></font> </p><br>");
+            output.Print("<p>Next junction is at <font color=#ffff00><b>" + DistantaMacaz() + "</b></font></p><br>");
         else
-            output.Print("<p>Semnalul următor este la distanța de <font color=#ffff00><b>" + DistantaSemnal() + "</b></font> </p><br>");
+            output.Print("<p>Next signal is at <font color=#ffff00><b>" + DistantaSemnal() + "</b></font></p><br>");
 
-        output.Print("<p>Pentru tutorial de configurare și mai multe detalii vizitați https://www.tapatalk.com/groups/vvmm/</p>");
+        output.Print("<p>For detailed configuration tutorial, support and updates visit https://www.tapatalk.com/groups/vvmm/</p>");
 
         return output.AsString();
     }
@@ -4237,7 +4258,7 @@ class Semnal isclass Signal
     //
     thread void InitialUpdate()
     {
-        if (DEBUG) Interface.Log("RO SIG> " + GetLocalisedName() + " : InitialUpdate pentru " + GetDebugName());
+        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : InitialUpdate pentru " + GetDebugName());
         while (GetGameObjectID() == null)
             Sleep(1.0);
         UpdateAll();
@@ -4246,9 +4267,9 @@ class Semnal isclass Signal
     //
     // Initialize the signal
     //
-    public void Init(void)
+    public void Init(Asset asset)
     {
-        inherited();
+        inherited(asset);
         Asset self = GetAsset();
         config = self.GetConfigSoup();
 
@@ -4288,6 +4309,9 @@ class Semnal isclass Signal
         alblinie = self.FindAsset("whiteline");
         galbenclipitor2 = self.FindAsset("yellowblink2");
 
+        if (signal_type == "TMV" and (has_bar or has_direction))
+            Letters = GetAsset().FindAsset("texture-lib");
+
         if (signal_type == "MEC_DR")
             html_title = "DR";
         else
@@ -4299,9 +4323,6 @@ class Semnal isclass Signal
         LightBar(0);
         LightDirection(0);
         LightLinie(0);
-
-        if (signal_type == "TMV" and (has_bar or has_direction))
-            Letters = GetAsset().FindAsset("texture-lib");
 
         InitialUpdate();
 
