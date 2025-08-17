@@ -1,6 +1,6 @@
 //
 // RO CFR Signal Script Library
-// Version: 3.2.230606
+// Version: 3.2.250817
 // Author: SilverGreen93 (c) 2013-2025
 // Email: mihai.vasiliu.93@gmail.com
 // MyTrainz ID: vvmm (474195)
@@ -15,7 +15,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-    define string BUILD = "v3.2.230606";
+    define string BUILD = "v3.2.250817";
     define bool DEBUG = false;
 
     // Definitiile becurilor (efectelor din config)
@@ -89,6 +89,10 @@ class Semnal isclass Signal
     define int R_MANEVRA = 91;
     define int R_CHEMARE = 92;
 
+    // Definitiile pentru index legaturi semnale
+    define int LINK_NEXT = 0; // semnalul urmator
+    define int LINK_PREV = 1; // semnalul precedent
+
     // variabile locale
     string signal_type;
     string html_title;
@@ -100,8 +104,7 @@ class Semnal isclass Signal
     Soup config;
 
     GameObjectID[] junctionIDList = new GameObjectID[0];
-    GameObjectID nextSignalID = null;
-    string nextSignalName = "does not exist";
+    Signal[] linkSignal = new Signal[2]; // 0 - semnalul urmator, 1 - semnalul precedent
 
     int next_aspect = S_UNDEF;
     int next_restrict = R_UNDEF;
@@ -983,40 +986,78 @@ class Semnal isclass Signal
     //
     // Find next signal and junctions and link
     //
-    void LinkSemnal()
+    void LinkSemnal(bool direction)
     {
-        GSTrackSearch GSTS = BeginTrackSearch(true);
-        MapObject mo = GSTS.SearchNext();
+        GSTrackSearch GSTS;
+        MapObject mo;
+        string dir;
+        int idx;
 
-        junctionIDList[0, junctionIDList.size()] = null;
+        if (direction)
+            idx = LINK_NEXT;
+        else
+            idx = LINK_PREV;
         
-        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : LinkSemnal");
-        
+        if (DEBUG) {
+            if (direction)
+                dir = "forward";
+            else
+                dir = "backward";
+            Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : LinkSemnal " + dir);
+        }
+
+        // Find signal and junction based on direction
+        GSTS = BeginTrackSearch(direction);
+        mo = GSTS.SearchNext();
         while (mo)
         {
-            if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection())
+            if (cast<Semnal>mo and (GSTS.GetFacingRelativeToSearchDirection() == direction))
             {
-                nextSignalID = mo.GetGameObjectID();
-                nextSignalName = mo.GetLocalisedName();
+                // daca avem semnale CFR
+                linkSignal[idx] = cast<Signal>mo;
+                if (direction)
                 next_aspect = (cast<Semnal>mo).this_aspect;
-                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Semnal găsit = " + nextSignalName);
-                //SetFXNameText("name0", "NS: " + nextSignalName);
-                //SetFXNameText("name1", "NA: " + next_aspect);
+                if (DEBUG)
+                    Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : CFR Signal found " + dir + " = " + mo.GetLocalisedName());
+
                 // opreste cautarea doar daca ai intilnit orice alt semnal in afara de manevra
+                // nu lega in schema de semnalizare semnalele de manevra
                 if (!((cast<Semnal>mo).is_manevra and !((cast<Semnal>mo).is_intrare or (cast<Semnal>mo).is_iesire or (cast<Semnal>mo).is_triere)))
                     break;
             }
-            else if (cast<Signal>mo and GSTS.GetFacingRelativeToSearchDirection()) // daca avem semnale Trainz standard.
+            else if (cast<Signal>mo and (GSTS.GetFacingRelativeToSearchDirection() == direction))
             {
-                nextSignalID = (cast<Signal>mo).GetGameObjectID();
-                nextSignalName = (cast<Signal>mo).GetLocalisedName();
-                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Semnal Trainz standard găsit = " + nextSignalName);
+                // daca avem semnale Trainz standard
+                linkSignal[idx] = cast<Signal>mo;
+                if (direction)
+                {
+                    next_aspect = (cast<Signal>mo).GetSignalState();
+                    // Convert Trainz signal state to CFR state
+                    switch (next_aspect)
+                    {
+                        case GREEN:
+                            next_aspect = S_VERDE;
+                            break;
+                        case YELLOW:
+                            next_aspect = S_GALBEN;
+                            break;
+                        default:
                 next_aspect = S_ROSU;
+                            break;
+                    }
+                }
+
+                if (DEBUG)
+                    Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Trainz Signal found " + dir + " = " + mo.GetLocalisedName());
+
                 break;
             }
             else if (cast<Junction>mo)
             {
-                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macaz găsit = " + mo.GetLocalisedName());
+                // daca avem macaz, adauga-l in lista de macazuri
+                if (DEBUG)
+                    Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Found junction " + dir + " = " + mo.GetLocalisedName());
+
                 junctionIDList[junctionIDList.size()] = mo.GetGameObjectID();
             }
             mo = GSTS.SearchNext();
@@ -1027,24 +1068,6 @@ class Semnal isclass Signal
         //int i;
         //for (i=0;i<junctionIDList.size();++i)
         //    Interface.Log("  -> " + junctionIDList[i].GetName());
-
-        // daca e de grup ne intereseaza si macazul de dinainte
-        if (is_grup)
-        {
-            GSTS = BeginTrackSearch(false);
-            mo = GSTS.SearchNext();
-            while (mo)
-            {
-                if (cast<Junction>mo)
-                {
-                    if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macaz grup găsit = " + mo.GetLocalisedName());
-                    junctionIDList[junctionIDList.size()] = mo.GetGameObjectID();
-                    break;
-                }
-                mo = GSTS.SearchNext();
-            }
-        }
-
     }
 
     //
@@ -1052,8 +1075,17 @@ class Semnal isclass Signal
     //
     void Notify()
     {
-        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Trimite stare (broadcast) = stare/" + this_aspect);
-        PostMessage(null, "Semnal", "stare/" + this_aspect, 0.0);
+        if (linkSignal[LINK_PREV]) {
+            if (DEBUG)
+                Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Send state change to " + linkSignal[LINK_PREV].GetLocalisedName() + ": stare/" + this_aspect);
+
+            PostMessage(linkSignal[LINK_PREV], "Semnal", "stare/" + this_aspect, 0.0);
+        }
+        else
+        {
+            if (DEBUG)
+                Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : No previous signal to notify.");
+        }
     }
 
 
@@ -4014,7 +4046,10 @@ class Semnal isclass Signal
     //
     thread void UpdateAll()
     {
-        LinkSemnal();
+        // sterge toate macazurile existente si refa legaturile
+        junctionIDList[0, junctionIDList.size()] = null;
+        LinkSemnal(true); // leaga semnal inainte
+        LinkSemnal(false); // leaga semnal inapoi
         UpdateAspect();
     }
 
@@ -4023,6 +4058,11 @@ class Semnal isclass Signal
     //
     void MessageHandler(Message msg)
     {
+        if (!msg) {
+            Interface.Log("SIG-RO-CFR-ERR> MessageHandler: msg is null!");
+            return;
+        }
+
         if (msg.major == "Semnal")
         {
             string[] tok = Str.Tokens(msg.minor, "/");
@@ -4040,7 +4080,7 @@ class Semnal isclass Signal
             if (tok[0] == "stare")
             {
                 // nu face update-uri aiurea, doar daca e necesar
-                if (nextSignalID and nextSignalID.DoesMatch((cast<Semnal>msg.src).GetGameObjectID()))
+                if (linkSignal[LINK_NEXT] and linkSignal[LINK_NEXT].GetGameObjectID().DoesMatch((cast<Semnal>msg.src).GetGameObjectID()))
                 {
                     next_aspect = Str.ToInt(tok[1]);
                     UpdateAspect();
@@ -4106,12 +4146,14 @@ class Semnal isclass Signal
             if (msg.minor == "Toggled")
             {
                 int i;
-                if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Primit mesaj Junction Toggled");
+                if (DEBUG)
+                    Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Primit mesaj Junction Toggled de la " + (cast<Junction>msg.src).GetLocalisedName());
                 for (i = 0; i < junctionIDList.size(); ++i)
                     if (junctionIDList[i] and junctionIDList[i].DoesMatch((cast<Junction>msg.src).GetGameObjectID()))
                     {
                         // nu face update-uri aiurea, doar daca e necesar
-                        if (DEBUG) Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macazul " + (cast<Junction>msg.src).GetLocalisedName() + " e pe lista mea");
+                        if (DEBUG)
+                            Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Macazul " + (cast<Junction>msg.src).GetLocalisedName() + " e pe lista mea");
                         UpdateAll();
                         break;
                     }
@@ -4221,6 +4263,7 @@ class Semnal isclass Signal
     {
         HTMLBuffer output = HTMLBufferStatic.Construct();
         string nume;
+        string nextSignalName = "no signal";
 
         if (numeAfisat == "")
             nume = "(no name)";
@@ -4239,8 +4282,8 @@ class Semnal isclass Signal
 
         output.Print("<p>" + HTMLWindow.CheckBox("live://property/disabled", xxx) + " Signal is out of order</p><br>");
 
-        if (nextSignalName == "")
-            nextSignalName = "Without name";
+        if (linkSignal[LINK_NEXT])
+            nextSignalName = linkSignal[LINK_NEXT].GetLocalisedName();
         output.Print("<p>Next direct signal: <font color=#ffff00><b>" + nextSignalName + "</b></font></p><br>");
 
         if (is_intrare or is_iesire or is_manevra)
