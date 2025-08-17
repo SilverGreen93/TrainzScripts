@@ -16,7 +16,7 @@ class SigLib isclass Library{};
 class Semnal isclass Signal
 {
     define string BUILD = "v3.2.250817";
-    define bool DEBUG = false;
+    define bool DEBUG = true;
 
     // Definitiile becurilor (efectelor din config)
     define string B_ROSU = "0";
@@ -45,7 +45,10 @@ class Semnal isclass Signal
     define int S_GAL_GAL_90 = 19;
     define int S_VER_GAL_90 = 20;
     define int S_ROSU_AV = 70;
-    define int S_TRIERE = 71; // Folosit numai la mesaje, nu exista in regulamente
+    define int S_TRIERE_OPRIT = 80;
+    define int S_TRIERE_INCET = 81;
+    define int S_TRIERE_REPEDE = 82;
+    define int S_TRIERE_TRAGE = 83;
     define int S_ALBASTRU = 90;
     define int S_ALB = 91;
     define int S_CHEMARE = 92;
@@ -83,8 +86,8 @@ class Semnal isclass Signal
     define int R_T30 = 5;
     define int R_T60 = 6;
     define int R_T80 = 7;
-    define int R_T90 = 8;
     define int R_T100 = 9;
+    define int R_T90 = 8;
     define int R_TVS = 10;
     define int R_MANEVRA = 91;
     define int R_CHEMARE = 92;
@@ -110,7 +113,8 @@ class Semnal isclass Signal
     int next_restrict = R_UNDEF;
     int memo_aspect = S_NOMEMO; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
     int memo_restrict = R_NOMEMO;
-    bool active_shunt, active_fault, active_chemare, xxx, trage_convoi;
+    bool active_shunt, active_fault, active_chemare, xxx, active_triere;
+    int special_restrict; // daca este activa restrictie de chemare, avarie, manevra sau triere, aceasta va fi memorata aici
     int direction, restriction, ies_st, linie;
     bool bla_left = false; // dacă semnalul BLA trebuie să respecte orientarea de bloc pe linia din stînga a căii duble
     bool orientare_bla = true; // dacă semnalul BLA are orientarea de bloc activată în funcție de sosirea trenului
@@ -768,7 +772,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> Else clause!");
                 }
             }
             if (is_manevra)
@@ -789,13 +793,13 @@ class Semnal isclass Signal
                     SetFXCoronaTexture(B_GAL_JOS, null);
                     SetMeshAnimationFrame("default", 0, 2);
                     if (signal_type == "MEC")
-                    SetMeshAnimationFrame("paleta", 60, 1);
+                        SetMeshAnimationFrame("paleta", 60, 1);
                     else if (signal_type == "MEC_DR")
                         SetMeshAnimationState("paleta", false);
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> Else clause!");
                 }
             }
         }
@@ -853,7 +857,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> Else clause!");
                 }
             }
             if (is_bla or is_bla4i)
@@ -887,13 +891,6 @@ class Semnal isclass Signal
                 SetFXAttachment("60",null);
                 SetFXAttachment("61",null);
                 SetFXAttachment("62",null);
-            }
-            if (is_triere)
-            {
-                SetFXAttachment(B_ROSU, null);
-                SetFXAttachment(B_GALBEN, null);
-                SetFXAttachment(B_VERDE, null);
-                SetFXAttachment(B_ALB, null);
             }
 
             LightBar(0);
@@ -940,7 +937,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> Else clause!");
                 }
             }
             if (is_bla)
@@ -976,9 +973,16 @@ class Semnal isclass Signal
                 SetFXAttachment("62",null);
             }
         }
+        else if (signal_type == "TRIERE")
+        {
+            SetFXAttachment(B_ROSU, null);
+            SetFXAttachment(B_GALBEN, null);
+            SetFXAttachment(B_VERDE, null);
+            SetFXAttachment(B_ALB, null);
+        }
         else
         {
-            Exception("SIG-RO-CFR> Unknown signal_type: " + signal_type);
+            Exception("SIG-RO-CFR-ERR> Unknown signal_type: " + signal_type);
         }
     }
 
@@ -997,7 +1001,7 @@ class Semnal isclass Signal
             idx = LINK_NEXT;
         else
             idx = LINK_PREV;
-        
+
         if (DEBUG) {
             if (direction)
                 dir = "forward";
@@ -1016,7 +1020,7 @@ class Semnal isclass Signal
                 // daca avem semnale CFR
                 linkSignal[idx] = cast<Signal>mo;
                 if (direction)
-                next_aspect = (cast<Semnal>mo).this_aspect;
+                    next_aspect = (cast<Semnal>mo).this_aspect;
                 if (DEBUG)
                     Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : CFR Signal found " + dir + " = " + mo.GetLocalisedName());
 
@@ -1042,7 +1046,7 @@ class Semnal isclass Signal
                             next_aspect = S_GALBEN;
                             break;
                         default:
-                next_aspect = S_ROSU;
+                            next_aspect = S_ROSU;
                             break;
                     }
                 }
@@ -1100,6 +1104,87 @@ class Semnal isclass Signal
         return GetSignalState();
     }
 
+    //
+    // Update Triere Signal State
+    //
+    thread void UpdateTriere()
+    {
+        FindMarker();
+
+        if (active_chemare or restriction == R_CHEMARE)
+        {
+            // IMPINGE CONVOIUL PINA LA VIRF
+            this_aspect = S_CHEMARE;
+            if (this_aspect != memo_aspect)
+            {
+                memo_aspect = this_aspect;
+                Notify();
+                LightsOff();
+                LightDirection(0);
+
+                SetFXAttachment(B_ALB, albclipitor);
+                SetSpeedLimit(20/3.6);
+                //SetSignalState(null, GREEN, "Depășire permisă");
+            }
+        }
+        else if (active_shunt or restriction == R_MANEVRA)
+        {
+            // MANEVRA PERMISA
+            this_aspect = S_ALB;
+            if (this_aspect != memo_aspect)
+            {
+                memo_aspect = this_aspect;
+                Notify();
+                LightsOff();
+                LightDirection(0);
+
+                SetFXAttachment(B_ALB, alb);
+                SetSpeedLimit(20/3.6);
+                //SetSignalState(null, GREEN, "Manevra permisă");
+            }
+        }
+        else if (active_triere)
+        {
+            // TRIERE ACTIVA
+            // this_aspect e deja setat la primirea mesajului
+            if (this_aspect != memo_aspect)
+            {
+                memo_aspect = this_aspect;
+                Notify();
+                LightsOff();
+                LightDirection(0);
+
+                switch (this_aspect)
+                {
+                    case S_TRIERE_OPRIT:
+                        SetFXAttachment(B_ROSU, rosu);
+                        break;
+                    case S_TRIERE_INCET:
+                        SetFXAttachment(B_GALBEN, galben);
+                        break;
+                    case S_TRIERE_REPEDE:
+                        SetFXAttachment(B_VERDE, verde);
+                        break;
+                    case S_TRIERE_TRAGE:
+                        SetFXAttachment(B_ROSU, rosuclipitor);
+                        SetSpeedLimit(20/3.6);
+                        break;
+                    default:;
+                }
+            }
+        }
+        else
+        {
+            this_aspect = S_ROSU;
+            if (this_aspect != memo_aspect)
+            {
+                memo_aspect = this_aspect;
+                Notify();
+                LightsOff();
+                SetFXAttachment(B_ROSU, rosu);
+            }
+        }
+    }
 
     //
     // Update DTV Signal State
@@ -1174,6 +1259,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_CHEMARE, albclipitor);
                     SetFXAttachment(B_ROSU, rosu);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Depășire permisă");
                 }
             } // MANEVRA
             else if (is_manevra and (restriction == S_ALB or active_shunt))
@@ -1188,6 +1274,7 @@ class Semnal isclass Signal
 
                     SetFXAttachment(B_ALB, alb);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
             else if (GetSignalState() == RED or (next_aspect == S_UNDEF))
@@ -1254,7 +1341,9 @@ class Semnal isclass Signal
                 case S_BLOC_INVERS:
                     this_aspect=S_VERDE;
                     break;
-                default:;
+                default:
+                    this_aspect = S_GALBEN;
+                    break;
                 }
 
                 if (next_aspect >= 100)
@@ -1410,6 +1499,7 @@ class Semnal isclass Signal
                     Notify();
                     LightsOff();
                     SetFXAttachment(B_ROSU_AV,rosu);
+                    //SetSignalState(null, RED, "Avarie la trecerea la nivel");
                 }
             }
             else if (GetBLASignalState() == S_BLOC_INVERS)
@@ -1485,7 +1575,9 @@ class Semnal isclass Signal
                 case S_CHEMARE:
                     this_aspect = S_GALBEN;
                     break;
-                default:;
+                default:
+                    this_aspect = S_GALBEN;
+                    break;
                 }
 
                 if (next_aspect >= 100) // Daca urmatorul e TMV
@@ -1569,7 +1661,9 @@ class Semnal isclass Signal
             case S_CHEMARE:
                 this_aspect=S_GALBEN;
                 break;
-            default:;
+            default:
+                this_aspect = S_GALBEN;
+                break;
             }
 
             if (next_aspect >= 100)
@@ -1596,7 +1690,7 @@ class Semnal isclass Signal
             }
         }
 
-        // REPETITOR
+        // REPETITOR DTV
         if (is_repetitor)
         {
             this_aspect = next_aspect;
@@ -1608,7 +1702,7 @@ class Semnal isclass Signal
                 LightsOff();
 
                 //rosu
-                if (this_aspect==S_ROSU)
+                if (this_aspect == S_ROSU or this_aspect == S_TRIERE_OPRIT)
                 {
                     SetFXAttachment("50",albmic);
                     SetFXAttachment("51",albmic);
@@ -1620,7 +1714,8 @@ class Semnal isclass Signal
                 }
 
                 //galben
-                if (this_aspect==S_GALBEN or this_aspect>=S_GAL_CL and this_aspect<=T_VER_CL_100)
+                if (this_aspect == S_GALBEN or (this_aspect >= S_GAL_CL and this_aspect <= T_VER_CL_100) or
+                    this_aspect == S_TRIERE_INCET)
                 {
                     SetFXAttachment("50",albmic);
                     SetFXAttachment("51",albmic);
@@ -1632,7 +1727,7 @@ class Semnal isclass Signal
                 }
 
                 //verde
-                if (this_aspect==S_VERDE or this_aspect>=T_VERDE)
+                if (this_aspect == S_VERDE or this_aspect >= T_VERDE or this_aspect == S_TRIERE_REPEDE)
                 {
                     SetFXAttachment("50",albmic);
                     SetFXAttachment("51",albmic);
@@ -1661,6 +1756,7 @@ class Semnal isclass Signal
                     LightsOff();
                     SetFXAttachment(B_ALB, alb);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
             else
@@ -1688,6 +1784,7 @@ class Semnal isclass Signal
                     Notify();
                     LightsOff();
                     SetFXAttachment(B_ROSU_AV,rosu);
+                    //SetSignalState(null, RED, "Avarie la trecerea la nivel");
                 }
             }
             else
@@ -1701,152 +1798,6 @@ class Semnal isclass Signal
                 }
             }
         }
-
-        if (is_triere)
-        {
-            //TODO: Markeri Triere?
-            FindMarker();
-
-            // IMPINGE CONVOIUL SPRE COCOASA
-            if (active_chemare or restriction == S_CHEMARE)
-            {
-                this_aspect=S_CHEMARE;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    LightDirection(0);
-
-                    SetFXAttachment(B_ALB, albclipitor);
-                    SetSpeedLimit(20/3.6);
-                }
-            } // MANEVRA
-            else if (restriction == S_ALB or active_shunt)
-            {
-                this_aspect=S_ALB;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    LightDirection(0);
-
-                    SetFXAttachment(B_ALB, alb);
-                    SetSpeedLimit(20/3.6);
-                }
-            } // TRAGE CONVOIUL DE PE COCOASA
-            else if (trage_convoi)
-            {
-                this_aspect=S_ALB;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    LightDirection(0);
-
-                    SetFXAttachment(B_ROSU, rosuclipitor);
-                    SetSpeedLimit(20/3.6);
-                }
-            }
-            else if (GetSignalState() == RED  or (next_aspect == S_UNDEF))
-            {
-                this_aspect = S_ROSU;
-                if (this_aspect != memo_aspect)
-                {
-                    memo_aspect = this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ROSU, rosu);
-                }
-            }
-            else
-            {
-                switch (next_aspect)
-                {
-                case S_ROSU:
-                    this_aspect = S_GALBEN;
-                    break;
-                case S_GALBEN:
-                    this_aspect = S_VERDE;
-                    break;
-                case S_VERDE:
-                    this_aspect = S_VERDE;
-                    break;
-                case S_GAL_CL:
-                    this_aspect = S_VERDE;
-                    break;
-                case S_GAL_DCL:
-                    this_aspect = S_VERDE;
-                    break;
-                case S_VER_CL:
-                    this_aspect = S_VERDE;
-                    break;
-                case S_GAL_GAL:
-                    this_aspect = S_GAL_CL;
-                    break;
-                case S_VER_GAL:
-                    this_aspect = S_GAL_CL;
-                    break;
-                case S_GAL_GAL_60:
-                    this_aspect = S_GAL_DCL;
-                    break;
-                case S_VER_GAL_60:
-                    this_aspect = S_GAL_DCL;
-                    break;
-                case S_GAL_GAL_90:
-                    this_aspect = S_VER_CL;
-                    break;
-                case S_VER_GAL_90:
-                    this_aspect = S_VER_CL;
-                    break;
-                case S_ROSU_AV:
-                    this_aspect = S_GALBEN;
-                    break;
-                case S_ALB:
-                    this_aspect = S_VERDE;
-                    break;
-                case S_CHEMARE:
-                    this_aspect = S_GALBEN;
-                    break;
-                case S_BLOC_INVERS:
-                    this_aspect = S_VERDE;
-                    break;
-                default:;
-                }
-
-                if (next_aspect >= 100) // Daca urmatorul e TMV
-                    this_aspect = S_VERDE;
-
-                if (this_aspect != memo_aspect)
-                {
-                    Notify();
-                    memo_aspect = this_aspect;
-                    LightsOff();
-                    switch (this_aspect)
-                    {
-                    case S_GALBEN:
-                        SetFXAttachment(B_GALBEN, galben);
-                        break;
-                    case S_VERDE:
-                        SetFXAttachment(B_VERDE, verde);
-                        break;
-                    case S_GAL_CL:
-                        SetFXAttachment(B_GALBEN, galbenclipitor);
-                        break;
-                    case S_GAL_DCL:
-                        SetFXAttachment(B_GALBEN, galbenclipitor2);
-                        break;
-                    case S_VER_CL:
-                        SetFXAttachment(B_VERDE, verdeclipitor);
-                        break;
-                    default:;
-                    }
-                }
-            }
-        }
-
     }
 
     //
@@ -2197,7 +2148,7 @@ class Semnal isclass Signal
                 case S_GALBEN:
                     SetMeshAnimationFrame("default",0,2);
                     if (signal_type == "MEC")
-                    SetMeshAnimationFrame("paleta",60,1);
+                        SetMeshAnimationFrame("paleta",60,1);
                     else if (signal_type == "MEC_DR")
                         SetMeshAnimationState("paleta", false);
                     SetFXCoronaTexture(B_GALBEN,galben);
@@ -2205,7 +2156,7 @@ class Semnal isclass Signal
                 case S_VERDE:
                     SetMeshAnimationFrame("default",120,2);
                     if (signal_type == "MEC")
-                    SetMeshAnimationFrame("paleta",60,1);
+                        SetMeshAnimationFrame("paleta",60,1);
                     else if (signal_type == "MEC_DR")
                         SetMeshAnimationState("paleta", false);
                     SetFXCoronaTexture(B_GALBEN,verde);
@@ -2213,7 +2164,7 @@ class Semnal isclass Signal
                 case S_GAL_GAL:
                     SetMeshAnimationFrame("default",0,2);
                     if (signal_type == "MEC")
-                    SetMeshAnimationFrame("paleta",90,1);
+                        SetMeshAnimationFrame("paleta",90,1);
                     else if (signal_type == "MEC_DR")
                         SetMeshAnimationState("paleta", true);
                     SetFXCoronaTexture(B_GALBEN,galben);
@@ -2224,7 +2175,7 @@ class Semnal isclass Signal
             }
         }
 
-        // REPETITOR
+        // REPETITOR MEC
         if (is_repetitor)
         {
             this_aspect=next_aspect;
@@ -2265,6 +2216,7 @@ class Semnal isclass Signal
                     SetFXCoronaTexture(B_ALB, alb);
                     SetMeshAnimationFrame("default", 30, 1);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
             else
@@ -2310,6 +2262,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_CHEMARE, albclipitor);
                     SetFXAttachment(B_ROSU, rosu);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Depășire permisă");
                 }
             } // MANEVRA
             else if (is_manevra and (restriction == S_ALB or active_shunt))
@@ -2327,6 +2280,7 @@ class Semnal isclass Signal
 
                     SetFXAttachment(B_ALB, alb);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
             else if (GetSignalState() == RED or (next_aspect == S_UNDEF))
@@ -3541,6 +3495,7 @@ class Semnal isclass Signal
                     LightsOff();
                     LightNextLimit(0);
                     SetFXAttachment(B_ROSU_AV,rosu);
+                    //SetSignalState(null, RED, "Avarie la trecerea la nivel");
                 }
             }
             else if (GetBLASignalState() == S_BLOC_INVERS)
@@ -3714,7 +3669,9 @@ class Semnal isclass Signal
                     this_aspect=T_VER_CL;
                     next_restrict=R_T100;
                     break;
-                default:;
+                default:
+                    this_aspect = T_GALBEN;
+                    break;
                 }
 
                 if (this_aspect!=memo_aspect or next_restrict!=memo_restrict)
@@ -3884,7 +3841,9 @@ class Semnal isclass Signal
                 this_aspect=T_VER_CL;
                 next_restrict=9;
                 break;
-            default:;
+            default:
+                this_aspect = T_GALBEN;
+                break;
             }
 
             if (this_aspect!=memo_aspect or next_restrict!=memo_restrict)
@@ -3904,7 +3863,7 @@ class Semnal isclass Signal
             }
         }
 
-        // REPETITOR
+        // REPETITOR TMV
         if (is_repetitor)
         {
             this_aspect=next_aspect;
@@ -3968,6 +3927,7 @@ class Semnal isclass Signal
                     LightsOff();
                     SetFXAttachment(B_ALB, alb);
                     SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
             else
@@ -3995,6 +3955,7 @@ class Semnal isclass Signal
                     Notify();
                     LightsOff();
                     SetFXAttachment(B_ROSU_AV,rosu);
+                    //SetSignalState(null, RED, "Avarie la trecerea la nivel");
                 }
             }
             else
@@ -4031,6 +3992,13 @@ class Semnal isclass Signal
         }
         else
         {
+            // if (!active_fault and !active_shunt and !active_chemare and !active_triere)
+            // {
+            //     SetSignalState(null, GREEN, "");
+            //     SetSignalState(null, AUTOMATIC, "");
+            //     Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Semnalul nu are aspect activ, se va actualiza aspectul implicit");
+            // }
+
             SetFXAttachment("xxx", null);
             if (signal_type == "DTV")
                 UpdateDTV();
@@ -4038,6 +4006,8 @@ class Semnal isclass Signal
                 UpdateMEC();
             else if (signal_type == "TMV")
                 UpdateTMV();
+            else if (signal_type == "TRIERE")
+                UpdateTriere();
         }
     }
 
@@ -4090,10 +4060,13 @@ class Semnal isclass Signal
             {
                 if (Str.ToInt(tok[1]) == 0)
                 {
+                    //Interface.Log("SIG-RO-CFR-DBG> Setat pe AUTOMAT");
+                    //SetSignalState(null, AUTOMATIC, "");
+                    //Sleep(1.0);
                     active_shunt = false;
                     active_fault = false;
                     active_chemare = false;
-                    trage_convoi = false;
+                    active_triere = false;
                 }
                 else if (Str.ToInt(tok[1]) == S_ALB)
                     active_shunt = true;
@@ -4101,8 +4074,12 @@ class Semnal isclass Signal
                     active_chemare = true;
                 else if (Str.ToInt(tok[1]) == S_ROSU_AV)
                     active_fault = true;
-                else if (Str.ToInt(tok[1]) == S_TRIERE)
-                    trage_convoi = true;
+                else if (S_TRIERE_OPRIT <= Str.ToInt(tok[1]) and Str.ToInt(tok[1]) <= S_TRIERE_TRAGE)
+                {
+                    active_triere = true;
+                    // seteaza aspectul de triere
+                    this_aspect = Str.ToInt(tok[1]);
+                }
 
                 UpdateAspect();
             }
