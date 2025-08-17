@@ -1,0 +1,70 @@
+{
+  "name": "trainzgamescript",
+  "displayName": "Trainz GameScript",
+  "description": "Syntax highlighting for Trainz GameScript (.gs)",
+  "version": "1.0.0",
+  "publisher": "SilverGreen93",
+  "engines": {
+    "vscode": "^1.50.0"
+  },
+  "categories": [
+    "Programming Languages"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/SilverGreen93/TrainzScripts.git"
+  },
+  "icon": "TrainzDriverIcon128.png",
+  "contributes": {
+    "languages": [
+      {
+        "id": "gamescript",
+        "aliases": [
+          "GameScript",
+          "GS"
+        ],
+        "extensions": [
+          ".gs"
+        ],
+        "configuration": "./language-configuration.json"
+      }
+    ],
+    "grammars": [
+      {
+        "language": "gamescript",
+        "scopeName": "source.gamescript",
+        "path": "./syntaxes/gamescript.tmLanguage.json"
+      }
+    ],
+    "configurationDefaults": {
+      "editor.tokenColorCustomizations": {
+        "textMateRules": [
+          {
+            "scope": "keyword.operator.gamescript",
+            "settings": {
+              "foreground": "#3a8ed3"
+            }
+          },
+          {
+            "scope": "entity.name.type.class.gamescript",
+            "settings": {
+              "foreground": "#4ec9b0"
+            }
+          },
+          {
+            "scope": "entity.name.function.gamescript",
+            "settings": {
+              "foreground": "#dcdcaa"
+            }
+          },
+          {
+            "scope": "constant.define.gamescript",
+            "settings": {
+              "foreground": "#d8a0df"
+            }
+          }
+        ]
+      }
+    }
+  }
+}
