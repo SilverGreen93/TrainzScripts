@@ -1,9 +1,8 @@
 //
-// RO CFR Signals Script
-// Version: 3.1
-// Build: 200524
-// Date: 24.05.2020
-// Author: SilverGreen93 (c) 2013-2020
+// RO CFR Signal Script Library
+// Version: 3.2.230606
+// Author: SilverGreen93 (c) 2013-2025
+// Email: mihai.vasiliu.93@gmail.com
 // MyTrainz ID: vvmm (474195)
 // Website: https://www.tapatalk.com/groups/vvmm/
 //
@@ -16,7 +15,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-    define string BUILD = "v3.1 b200524";
+    define string BUILD = "v3.2.230606";
     define bool DEBUG = false;
 
     // Definitiile becurilor (efectelor din config)
