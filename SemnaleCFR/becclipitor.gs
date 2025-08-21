@@ -6,7 +6,7 @@
 // Forum: https://www.tapatalk.com/groups/vvmm/
 //
 
-include "MapObject.gs"
+include "meshobject.gs"
 
 class BecClipitor isclass MeshObject
 {
