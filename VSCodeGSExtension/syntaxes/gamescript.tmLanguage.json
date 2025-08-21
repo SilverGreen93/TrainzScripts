@@ -34,7 +34,7 @@
     },
     {
       "name": "keyword.declaration.gamescript",
-      "match": "\\b(include|class|isclass|define|native|final|static|public|private|protected|obsolete)\\b"
+      "match": "\\b(game|include|class|isclass|define|native|final|static|public|private|protected|obsolete)\\b"
     },
     {
       "name": "storage.type.gamescript",
@@ -51,7 +51,7 @@
 
     {
       "name": "entity.name.type.class.gamescript",
-      "match": "\\b(GameObjectID|Interface|Soup|Asset|DriverCommand|CustomCommand|DriverCommands|DriverScheduleCommand|DriverCustomCommand|DriverCharacter|Menu|Train|World|MapObject|Permit|GSTrackSearch|Message|StringTable|GameObject|SessionVariables|Vehicle|Signal|Junction|Trackside|Crossing|Library|LinkedList|Locomotive|Image|KUIDList|RoutesMenuSettingsLibrary|GameplayMenu|RankingsLib|SecurityToken|MultiplayerLobbyLibrary|AsyncTrainzAssetSearchObject|HTMLWindow|HTMLBuffer|HTMLBufferStatic|CabinData|CabinControl|ControlSettingsManager|Router|DefaultLocomotiveCabin|Industry|Browser|TrainzAssetSearch)\\b"
+      "match": "\\b(MeshObject|GameObjectID|Interface|Soup|Asset|DriverCommand|CustomCommand|DriverCommands|DriverScheduleCommand|DriverCustomCommand|DriverCharacter|Menu|Train|World|MapObject|Permit|GSTrackSearch|Message|StringTable|GameObject|SessionVariables|Vehicle|Signal|Junction|Trackside|Crossing|Library|LinkedList|Locomotive|Image|KUIDList|RoutesMenuSettingsLibrary|GameplayMenu|RankingsLib|SecurityToken|MultiplayerLobbyLibrary|AsyncTrainzAssetSearchObject|HTMLWindow|HTMLBuffer|HTMLBufferStatic|CabinData|CabinControl|ControlSettingsManager|Router|DefaultLocomotiveCabin|Industry|Browser|TrainzAssetSearch)\\b"
     },
 
     {
