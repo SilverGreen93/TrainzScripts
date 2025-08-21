@@ -1,35 +1,60 @@
 //
-// Blink a bulb gradually
-// Version: 1.1
-// Date: 31.01.2016
-// Author: vvmm (c) 2013-2016
-// Website: http://vvmm.freeforums.org/
+// Blinking Incandescent Signal Bulb
+// Version: 2.0.250821
+// Author: SilverGreen93 (c) 2013-2025
+// GitHub: https://github.com/SilverGreen93/TrainzScripts
+// Forum: https://www.tapatalk.com/groups/vvmm/
 //
 
 include "MapObject.gs"
 
-class BecClipitor isclass MapObject
+class BecClipitor isclass MeshObject
 {
-	public StringTable ST;
-	public float freq = 1;
-	float adj = 0.1; // Ajustarea clipirii cu dT intre stingere/aprindere
-	
-	thread void Clipire(void)
-	{
-		while(1)
-		{
-			// Sleep-ul trebuie sa astepte tot atata cat ii ia mesh-ului sa apara sau sa dispara
-			Sleep(1/freq/2 + adj);
-			SetMeshVisible("default", true, 1/freq/2 - adj);
-			Sleep(1/freq/2 + adj);
-			SetMeshVisible("default", false, 1/freq/2 - adj);
-		}
-	}
+    define float adj = 0.1; // Sleep-Blink delay adjust
 
-	public void Init(void)
-	{
-		inherited();
-		freq = GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsFloat("lightfreq-474195", 0.8);
-		Clipire();
-	}
+
+    // Light bulb without blinking
+    void Aprindere(float delay)
+    {
+        SetMeshVisible("default", true, delay);
+    }
+
+
+    // Light bulb and blink
+    thread void Clipire(float freq)
+    {
+        float period = 1 / freq / 2;
+
+        while(1)
+        {
+            // Sleep must wait the same amount of time as it takes for the mesh to appear or disappear
+            SetMeshVisible("default", true, period - adj);
+            Sleep(period + adj);
+            SetMeshVisible("default", false, period - adj);
+            Sleep(period + adj);
+        }
+    }
+
+
+    public void Init(Asset asset)
+    {
+        float delay; // Initial turn on delay
+        float freq; // Blinking frequency
+
+        inherited(asset);
+
+        delay = GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsFloat("lightdelay-474195", 0);
+        freq = GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsFloat("lightfreq-474195", 0);
+
+        SetMeshVisible("default", false, 0);
+
+        if (freq > 0)
+        {
+            Clipire(freq);
+        }
+        else
+        {
+            Aprindere(delay);
+        }
+    }
 };
