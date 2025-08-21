@@ -1,10 +1,9 @@
 //
 // RO CFR Signal Script Library
-// Version: 3.2.250817
+// Version: 3.2.250821
 // Author: SilverGreen93 (c) 2013-2025
-// Email: mihai.vasiliu.93@gmail.com
-// MyTrainz ID: vvmm (474195)
-// Website: https://www.tapatalk.com/groups/vvmm/
+// GitHub: https://github.com/SilverGreen93/TrainzScripts
+// Forum: https://www.tapatalk.com/groups/vvmm/
 //
 
 include "signal.gs"
@@ -15,7 +14,7 @@ class SigLib isclass Library{};
 
 class Semnal isclass Signal
 {
-    define string BUILD = "v3.2.250817";
+    define string BUILD = "v3.2.250821";
     define bool DEBUG = true;
 
     // Definitiile becurilor (efectelor din config)
@@ -30,29 +29,25 @@ class Semnal isclass Signal
     define string B_CHEMARE = "92";
 
     // Definitiile aspectelor semnalelor
-    define int S_NOMEMO = -2; // nu are un aspect memorat inca
-    define int S_UNDEF = -1; // nu are un asepct setat inca
-    define int S_ROSU = 0;
-    define int S_GALBEN = 1;
-    define int S_VERDE = 2;
-    define int S_GAL_CL = 3;
-    define int S_GAL_DCL = 4;
-    define int S_VER_CL = 6;
-    define int S_GAL_GAL = 7;
-    define int S_VER_GAL = 8;
-    define int S_GAL_GAL_60 = 13;
-    define int S_VER_GAL_60 = 14;
-    define int S_GAL_GAL_90 = 19;
-    define int S_VER_GAL_90 = 20;
-    define int S_ROSU_AV = 70;
-    define int S_TRIERE_OPRIT = 80;
-    define int S_TRIERE_INCET = 81;
-    define int S_TRIERE_REPEDE = 82;
-    define int S_TRIERE_TRAGE = 83;
-    define int S_ALBASTRU = 90;
-    define int S_ALB = 91;
-    define int S_CHEMARE = 92;
-    define int S_BLOC_INVERS = 93;
+    define public int S_NOMEMO = -2; // nu are un aspect memorat inca
+    define public int S_ROSU = 0;
+    define public int S_GALBEN = 1;
+    define public int S_VERDE = 2;
+    define public int S_GAL_CL = 3;
+    define public int S_GAL_DCL = 4;
+    define public int S_VER_CL = 6;
+    define public int S_GAL_GAL = 7;
+    define public int S_VER_GAL = 8;
+    define public int S_GAL_GAL_60 = 13;
+    define public int S_VER_GAL_60 = 14;
+    define public int S_GAL_GAL_90 = 19;
+    define public int S_VER_GAL_90 = 20;
+    define public int S_ROSU_AV = 70; // de desfiintat
+    define public int S_ROSU_CL = 83;
+    define public int S_ALBASTRU = 90;
+    define public int S_ALB = 91;
+    define public int S_ALB_CL = 92;
+    define public int S_BLOC_INVERS = 93;
     define int T_GALBEN = 100;
     define int T_GALBEN_20 = 101;
     define int T_GALBEN_30 = 102;
@@ -109,7 +104,7 @@ class Semnal isclass Signal
     GameObjectID[] junctionIDList = new GameObjectID[0];
     Signal[] linkSignal = new Signal[2]; // 0 - semnalul urmator, 1 - semnalul precedent
 
-    int next_aspect = S_UNDEF;
+    int next_aspect = AUTOMATIC;
     int next_restrict = R_UNDEF;
     int memo_aspect = S_NOMEMO; // pentru a evita situatia in care this_aspect==memo_aspect la initializare, de exemplu albastru manevra
     int memo_restrict = R_NOMEMO;
@@ -121,7 +116,7 @@ class Semnal isclass Signal
     string numeAfisat;
 
     // variabile publice
-    public int this_aspect = S_UNDEF;
+    public int this_aspect = AUTOMATIC;
     public bool is_iesire, is_intrare, is_bla, is_bla4i, is_prevestitor, is_pitic;
     public bool is_repetitor, is_manevra, is_avarie, is_triere, is_chemare, is_grup;
 
@@ -1110,30 +1105,9 @@ class Semnal isclass Signal
     //
     thread void UpdateTriere()
     {
-        FindMarker();
-
-        if (!special_restrict and restriction != R_VS)
+        if (this_aspect < S_ROSU)
         {
-            if (restriction == R_CHEMARE)
-                this_aspect = S_CHEMARE;
-            else if (restriction == R_MANEVRA)
-                this_aspect = S_ALB;
-            else
-                this_aspect = S_ROSU;
-
-            if (DEBUG)
-                Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Marker restriction active: " + this_aspect);
-        }
-        else if (special_restrict)
-        {
-            // primit mesaj cu restrictie speciala
-            // this_aspect e deja setat in MessageHandler
-            if (DEBUG)
-                Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : Special restriction active: " + this_aspect);
-        }
-        else
-        {
-            // nu avem restrictie speciala sau marker, ordona oprirea
+            // nu se suporta aspect automat
             this_aspect = S_ROSU;
         }
 
@@ -1152,21 +1126,18 @@ class Semnal isclass Signal
                 case S_ROSU:
                     SetFXAttachment(B_ROSU, rosu);
                     break;
-                case S_TRIERE_OPRIT:
-                    SetFXAttachment(B_ROSU, rosu);
-                    break;
-                case S_TRIERE_INCET:
+                case S_GALBEN:
                     SetFXAttachment(B_GALBEN, galben);
                     break;
-                case S_TRIERE_REPEDE:
+                case S_VERDE:
                     SetFXAttachment(B_VERDE, verde);
                     break;
-                case S_CHEMARE:
+                case S_ALB_CL:
                     SetFXAttachment(B_ALB, albclipitor);
                     SetSpeedLimit(20/3.6);
                     //SetSignalState(null, GREEN, "Depășire permisă");
                     break;
-                case S_TRIERE_TRAGE:
+                case S_ROSU_CL:
                     SetFXAttachment(B_ROSU, rosuclipitor);
                     SetSpeedLimit(20/3.6);
                     break;
@@ -1175,7 +1146,9 @@ class Semnal isclass Signal
                     SetSpeedLimit(20/3.6);
                     //SetSignalState(null, GREEN, "Manevra permisă");
                     break;
-                default:;
+                default:
+                    Interface.Log("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Invalid aspect: " + this_aspect);
+                    break;
             }
         }
     }
@@ -1189,7 +1162,7 @@ class Semnal isclass Signal
         // INTRARE sau IESIRE DTV 2
         if ((is_intrare or is_iesire) and lights_count == 2)
         {
-            if (GetSignalState() == RED or (next_aspect == S_UNDEF))
+            if (GetSignalState() == RED or (next_aspect == AUTOMATIC))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1205,7 +1178,7 @@ class Semnal isclass Signal
                 // INTRARE
                 if(is_intrare)
                 {
-                    this_aspect = S_CHEMARE;
+                    this_aspect = S_ALB_CL;
 
                     if (this_aspect != memo_aspect)
                     {
@@ -1241,9 +1214,9 @@ class Semnal isclass Signal
             FindMarker();
 
             // CHEMARE
-            if (is_chemare and (active_chemare or restriction == S_CHEMARE))
+            if (is_chemare and (active_chemare or restriction == S_ALB_CL))
             {
-                this_aspect=S_CHEMARE;
+                this_aspect=S_ALB_CL;
                 if (this_aspect!=memo_aspect)
                 {
                     memo_aspect=this_aspect;
@@ -1272,7 +1245,7 @@ class Semnal isclass Signal
                     //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
-            else if (GetSignalState() == RED or (next_aspect == S_UNDEF))
+            else if (GetSignalState() == RED or (next_aspect == AUTOMATIC))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1330,7 +1303,7 @@ class Semnal isclass Signal
                 case S_ALB:
                     this_aspect=S_GALBEN;
                     break;
-                case S_CHEMARE:
+                case S_ALB_CL:
                     this_aspect=S_GALBEN;
                     break;
                 case S_BLOC_INVERS:
@@ -1407,7 +1380,7 @@ class Semnal isclass Signal
                     break;
 
                 case R_CHEMARE:
-                    this_aspect = S_CHEMARE;
+                    this_aspect = S_ALB_CL;
                     break;
                 default:;
                 }
@@ -1469,7 +1442,7 @@ class Semnal isclass Signal
                         SetFXAttachment(B_ALB, alb);
                         SetSpeedLimit(20/3.6);
                         break;
-                    case S_CHEMARE:
+                    case S_ALB_CL:
                         SetFXAttachment(B_CHEMARE, albclipitor);
                         SetFXAttachment(B_ROSU, rosu);
                         SetSpeedLimit(20/3.6);
@@ -1508,7 +1481,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU, rosu);
                 }
             }
-            else if (GetBLASignalState() == RED or (next_aspect == S_UNDEF))
+            else if (GetBLASignalState() == RED or (next_aspect == AUTOMATIC))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1567,7 +1540,7 @@ class Semnal isclass Signal
                 case S_ALB:
                     this_aspect = S_VERDE;
                     break;
-                case S_CHEMARE:
+                case S_ALB_CL:
                     this_aspect = S_GALBEN;
                     break;
                 default:
@@ -1653,7 +1626,7 @@ class Semnal isclass Signal
             case S_ALB:
                 this_aspect=S_VERDE;
                 break;
-            case S_CHEMARE:
+            case S_ALB_CL:
                 this_aspect=S_GALBEN;
                 break;
             default:
@@ -1697,7 +1670,7 @@ class Semnal isclass Signal
                 LightsOff();
 
                 //rosu
-                if (this_aspect == S_ROSU or this_aspect == S_TRIERE_OPRIT)
+                if (this_aspect == S_ROSU)
                 {
                     SetFXAttachment("50",albmic);
                     SetFXAttachment("51",albmic);
@@ -1709,8 +1682,7 @@ class Semnal isclass Signal
                 }
 
                 //galben
-                if (this_aspect == S_GALBEN or (this_aspect >= S_GAL_CL and this_aspect <= T_VER_CL_100) or
-                    this_aspect == S_TRIERE_INCET)
+                if (this_aspect == S_GALBEN or (this_aspect >= S_GAL_CL and this_aspect <= T_VER_CL_100))
                 {
                     SetFXAttachment("50",albmic);
                     SetFXAttachment("51",albmic);
@@ -1722,7 +1694,7 @@ class Semnal isclass Signal
                 }
 
                 //verde
-                if (this_aspect == S_VERDE or this_aspect >= T_VERDE or this_aspect == S_TRIERE_REPEDE)
+                if (this_aspect == S_VERDE or this_aspect >= T_VERDE)
                 {
                     SetFXAttachment("50",albmic);
                     SetFXAttachment("51",albmic);
@@ -1832,7 +1804,7 @@ class Semnal isclass Signal
         // INTRARE si IESIRE 2i
         if ((is_intrare or is_iesire) and (lights_count == 2))
         {
-            if (GetSignalState() == RED or (next_aspect == S_UNDEF))
+            if (GetSignalState() == RED or (next_aspect == AUTOMATIC))
             {
                 this_aspect = S_ROSU;
                 if (this_aspect != memo_aspect)
@@ -1937,7 +1909,7 @@ class Semnal isclass Signal
                 case S_ALB:
                     this_aspect=S_VERDE;
                     break;
-                case S_CHEMARE:
+                case S_ALB_CL:
                     this_aspect=S_GALBEN;
                     break;
                 case S_BLOC_INVERS:
@@ -2047,7 +2019,7 @@ class Semnal isclass Signal
             case S_ALB:
                 this_aspect=S_VERDE;
                 break;
-            case S_CHEMARE:
+            case S_ALB_CL:
                 this_aspect=S_GALBEN;
                 break;
             default:;
@@ -2124,7 +2096,7 @@ class Semnal isclass Signal
             case S_ALB:
                 this_aspect=S_VERDE;
                 break;
-            case S_CHEMARE:
+            case S_ALB_CL:
                 this_aspect=S_GALBEN;
                 break;
             default:;
@@ -2241,9 +2213,9 @@ class Semnal isclass Signal
             FindMarkerLinie();
 
             // CHEMARE
-            if (is_chemare and (active_chemare or restriction == S_CHEMARE))
+            if (is_chemare and (active_chemare or restriction == S_ALB_CL))
             {
-                this_aspect=S_CHEMARE;
+                this_aspect=S_ALB_CL;
                 if (this_aspect!=memo_aspect)
                 {
                     memo_aspect=this_aspect;
@@ -2278,7 +2250,7 @@ class Semnal isclass Signal
                     //SetSignalState(null, GREEN, "Manevra permisă");
                 }
             }
-            else if (GetSignalState() == RED or (next_aspect == S_UNDEF))
+            else if (GetSignalState() == RED or (next_aspect == AUTOMATIC))
             {
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
@@ -2714,7 +2686,7 @@ class Semnal isclass Signal
                     this_aspect=T_VER_CL_20;
                     next_restrict=R_T20;
                     break;
-                case S_CHEMARE:
+                case S_ALB_CL:
                     this_aspect=T_GALBEN_20;
                     next_restrict=R_T20;
                     break;
@@ -3424,7 +3396,7 @@ class Semnal isclass Signal
                 }
                 if (restriction==R_CHEMARE)
                 {
-                    this_aspect=S_CHEMARE;
+                    this_aspect=S_ALB_CL;
                     restriction=R_T20;
                 }
 
@@ -3461,7 +3433,7 @@ class Semnal isclass Signal
                     {
                         SetFXAttachment(B_ALB,alb);
                     }
-                    if (this_aspect==S_CHEMARE)
+                    if (this_aspect==S_ALB_CL)
                     {
                         SetFXAttachment(B_CHEMARE,albclipitor);
                         SetFXAttachment(B_ROSU,rosu);
@@ -3504,7 +3476,7 @@ class Semnal isclass Signal
                     SetFXAttachment(B_ROSU, rosu);
                 }
             }
-            else if (GetBLASignalState()==RED or (next_aspect == S_UNDEF))
+            else if (GetBLASignalState()==RED or (next_aspect == AUTOMATIC))
             {
                 this_aspect=S_ROSU;
                 if (this_aspect!=memo_aspect)
@@ -3576,7 +3548,7 @@ class Semnal isclass Signal
                     this_aspect=T_VER_CL_20;
                     next_restrict=R_T20;
                     break;
-                case S_CHEMARE:
+                case S_ALB_CL:
                     this_aspect=T_GALBEN_20;
                     next_restrict=R_T20;
                     break;
@@ -3748,7 +3720,7 @@ class Semnal isclass Signal
                 this_aspect=T_VER_CL_20;
                 next_restrict=R_T20;
                 break;
-            case S_CHEMARE:
+            case S_ALB_CL:
                 this_aspect=T_GALBEN_20;
                 next_restrict=R_T20;
                 break;
@@ -4053,7 +4025,7 @@ class Semnal isclass Signal
             }
             else if (tok[0] == "aspect")
             {
-                if (Str.ToInt(tok[1]) == 0)
+                if (Str.ToInt(tok[1]) == AUTOMATIC)
                 {
                     //Interface.Log("SIG-RO-CFR-DBG> Setat pe AUTOMAT");
                     //SetSignalState(null, AUTOMATIC, "");
@@ -4065,7 +4037,7 @@ class Semnal isclass Signal
                 }
                 else if (Str.ToInt(tok[1]) == S_ALB)
                     active_shunt = true;
-                else if (Str.ToInt(tok[1]) == S_CHEMARE)
+                else if (Str.ToInt(tok[1]) == S_ALB_CL)
                     active_chemare = true;
                 else if (Str.ToInt(tok[1]) == S_ROSU_AV)
                     active_fault = true;
@@ -4187,13 +4159,13 @@ class Semnal isclass Signal
         if (propertyID == "disabled")
         {
             xxx = !xxx;
-            memo_aspect = S_UNDEF;
+            memo_aspect = AUTOMATIC;
             UpdateAspect();
         }
         else if (propertyID == "bla_left")
         {
             bla_left = !bla_left;
-            memo_aspect = S_UNDEF;
+            memo_aspect = AUTOMATIC;
             UpdateAspect();
         }
     }
