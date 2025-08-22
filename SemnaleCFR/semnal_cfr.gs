@@ -3848,7 +3848,7 @@ class Semnal isclass Signal
         }
         else
         {
-            // if (!active_fault and !active_shunt and !active_chemare)
+            // if (special_restriction == AUTOMATIC)
             // {
             //     SetSignalState(null, GREEN, "");
             //     SetSignalState(null, AUTOMATIC, "");
@@ -3914,26 +3914,6 @@ class Semnal isclass Signal
             }
             else if (tok[0] == "aspect")
             {
-                // if (Str.ToInt(tok[1]) == AUTOMATIC)
-                // {
-                //     //Interface.Log("SIG-RO-CFR-DBG> Setat pe AUTOMAT");
-                //     //SetSignalState(null, AUTOMATIC, "");
-                //     //Sleep(1.0);
-                //     //active_shunt = false;
-                //     //active_fault = false;
-                //     //active_chemare = false;
-                //     special_restrict = false;
-                // }
-                // // else if (Str.ToInt(tok[1]) == S_ALB)
-                // //     active_shunt = true;
-                // // else if (Str.ToInt(tok[1]) == S_ALB_CL)
-                // //     active_chemare = true;
-                // // else if (Str.ToInt(tok[1]) == S_ROSU_AV)
-                // //     active_fault = true;
-                // else
-                // {
-                //     special_restrict = true;
-                // }
 
                 special_restrict = Str.ToInt(tok[1]);
 
