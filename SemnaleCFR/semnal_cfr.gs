@@ -671,10 +671,11 @@ class Semnal isclass Signal
     //
     // Cauta markeri
     //
-    void FindMarker()
+    int FindMarker(void)
     {
         GSTrackSearch GSTS = BeginTrackSearch(true);
         MapObject mo = GSTS.SearchNext();
+        //int restriction;
 
         direction = 0;
         ies_st = 0;
@@ -729,7 +730,8 @@ class Semnal isclass Signal
             }
             mo = GSTS.SearchNext();
         }
-        //SetFXNameText("name1", "ST=" + ies_st);
+
+        return restriction;
     }
 
     //
@@ -1103,18 +1105,18 @@ class Semnal isclass Signal
     //
     // Update Triere Signal State
     //
-    thread void UpdateTriere()
+    void UpdateTriere(void)
     {
         if (this_aspect < S_ROSU)
         {
-            // nu se suporta aspect automat
+            // it does not support automatic aspect
             this_aspect = S_ROSU;
         }
 
         if (DEBUG)
             Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : this_aspect: " + this_aspect + " memo_aspect: " + memo_aspect);
 
-        // seteaza aspectul semnalului
+        // set signal aspect
         if (this_aspect != memo_aspect)
         {
             memo_aspect = this_aspect;
@@ -1149,6 +1151,165 @@ class Semnal isclass Signal
                 default:
                     Interface.Log("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Invalid aspect: " + this_aspect);
                     break;
+            }
+        }
+    }
+
+
+    //
+    // Update Avarie Signal State
+    //
+    void UpdateAvarie(void)
+    {
+        if (special_restrict)
+        {
+            this_aspect = S_ROSU;
+            SetFXAttachment(B_ROSU_AV, rosu);
+            //SetSignalState(null, RED, "Avarie la trecerea la nivel");
+        }
+        else if (this_aspect < S_ROSU)
+        {
+            this_aspect = next_aspect;
+            LightsOff();
+        }
+
+        if (DEBUG)
+            Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : this_aspect: " + this_aspect + " memo_aspect: " + memo_aspect);
+
+        // set signal aspect
+        if (this_aspect != memo_aspect)
+        {
+            memo_aspect = this_aspect;
+            Notify();
+        }
+    }
+
+
+    //
+    // Update Manevra Signal State
+    //
+    void UpdateManevra(void)
+    {
+        restriction = FindMarker();
+
+        if (special_restrict or restriction == R_MANEVRA)
+        {
+            this_aspect = S_ALB;
+            //memo_aspect = AUTOMATIC; // force update state and Notify
+        }
+        else if (this_aspect < S_ROSU)
+        {
+            this_aspect = next_aspect;
+        }
+
+        if (DEBUG)
+            Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : this_aspect: " + this_aspect + " memo_aspect: " + memo_aspect);
+
+        // set signal aspect
+        if (this_aspect != memo_aspect)
+        {
+            memo_aspect = this_aspect;
+            Notify();
+            LightsOff();
+
+            switch (this_aspect)
+            {
+                case S_ALB:
+                    if (signal_type == "MEC")
+                    {
+                        SetFXCoronaTexture(B_ALB, alb);
+                        SetMeshAnimationFrame("default", 30, 1);
+                    }
+                    else
+                    {
+                        SetFXAttachment(B_ALB, alb);
+                    }
+                    SetSpeedLimit(20/3.6);
+                    //SetSignalState(null, GREEN, "Manevra permisă");
+                    break;
+                default:
+                    if (signal_type == "MEC")
+                    {
+                        SetFXCoronaTexture(B_ALB, albastru);
+                        SetMeshAnimationFrame("default", 0, 1);
+                    }
+                    else
+                    {
+                        SetFXAttachment(B_ALBASTRU, albastru);
+                    }
+                    break;
+            }
+        }
+    }
+
+
+    //
+    // Update Repetitor Signal State
+    //
+    void UpdateRepetitor(void)
+    {
+        this_aspect = next_aspect;
+
+        if (DEBUG)
+            Interface.Log("SIG-RO-CFR-DBG> " + GetLocalisedName() + " : this_aspect: " + this_aspect + " memo_aspect: " + memo_aspect);
+
+        // set signal aspect
+        if (this_aspect != memo_aspect)
+        {
+            memo_aspect = this_aspect;
+            Notify();
+            LightsOff();
+
+            if (signal_type == "MEC")
+            {
+                if (this_aspect == S_ROSU)
+                {
+                    SetMeshAnimationFrame("default", 0, 1);
+                    SetFXCoronaTexture(B_GALBEN, galben);
+                }
+                else
+                {
+                    SetMeshAnimationFrame("default", 30, 1);
+                    SetFXCoronaTexture(B_GALBEN, verde);
+                }
+            }
+            else
+            {
+                if (this_aspect == S_ROSU)
+                {
+                    SetFXAttachment("50", albmic);
+                    SetFXAttachment("51", albmic);
+                    SetFXAttachment("52", albmic);
+                    SetFXAttachment("53", albmic);
+                    SetFXAttachment("57", albmic);
+                    SetFXAttachment("58", albmic);
+                    SetFXAttachment("59", albmic);
+                }
+                else if (this_aspect == S_GALBEN or
+                        (this_aspect >= S_GAL_CL and this_aspect <= T_VER_CL_100))
+                {
+                    SetFXAttachment("50", albmic);
+                    SetFXAttachment("51", albmic);
+                    SetFXAttachment("52", albmic);
+                    SetFXAttachment("53", albmic);
+                    SetFXAttachment("54", albmic);
+                    SetFXAttachment("55", albmic);
+                    SetFXAttachment("56", albmic);
+                }
+                else if (this_aspect == S_VERDE or this_aspect >= T_VERDE)
+                {
+                    SetFXAttachment("50", albmic);
+                    SetFXAttachment("51", albmic);
+                    SetFXAttachment("52", albmic);
+                    SetFXAttachment("53", albmic);
+                    SetFXAttachment("60", albmic);
+                    SetFXAttachment("61", albmic);
+                    SetFXAttachment("62", albmic);
+                }
+                else
+                {
+                    Interface.Log("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Invalid aspect: " + this_aspect);
+                }
             }
         }
     }
@@ -1658,112 +1819,17 @@ class Semnal isclass Signal
             }
         }
 
-        // REPETITOR DTV
         if (is_repetitor)
         {
-            this_aspect = next_aspect;
-
-            if (this_aspect != memo_aspect)
-            {
-                memo_aspect = this_aspect;
-                Notify();
-                LightsOff();
-
-                //rosu
-                if (this_aspect == S_ROSU)
-                {
-                    SetFXAttachment("50",albmic);
-                    SetFXAttachment("51",albmic);
-                    SetFXAttachment("52",albmic);
-                    SetFXAttachment("53",albmic);
-                    SetFXAttachment("57",albmic);
-                    SetFXAttachment("58",albmic);
-                    SetFXAttachment("59",albmic);
-                }
-
-                //galben
-                if (this_aspect == S_GALBEN or (this_aspect >= S_GAL_CL and this_aspect <= T_VER_CL_100))
-                {
-                    SetFXAttachment("50",albmic);
-                    SetFXAttachment("51",albmic);
-                    SetFXAttachment("52",albmic);
-                    SetFXAttachment("53",albmic);
-                    SetFXAttachment("54",albmic);
-                    SetFXAttachment("55",albmic);
-                    SetFXAttachment("56",albmic);
-                }
-
-                //verde
-                if (this_aspect == S_VERDE or this_aspect >= T_VERDE)
-                {
-                    SetFXAttachment("50",albmic);
-                    SetFXAttachment("51",albmic);
-                    SetFXAttachment("52",albmic);
-                    SetFXAttachment("53",albmic);
-                    SetFXAttachment("60",albmic);
-                    SetFXAttachment("61",albmic);
-                    SetFXAttachment("62",albmic);
-                }
-            }
+            UpdateRepetitor();
         }
-
-        // MANEVRA
-        if (is_manevra and !(is_intrare or is_iesire or is_triere))
+        else if (is_manevra and !(is_intrare or is_iesire or is_triere))
         {
-            //Daca exista marker pentru manevra
-            FindMarker();
-
-            if (restriction == S_ALB or active_shunt)
-            {
-                this_aspect=S_ALB;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ALB, alb);
-                    SetSpeedLimit(20/3.6);
-                    //SetSignalState(null, GREEN, "Manevra permisă");
-                }
-            }
-            else
-            {
-                this_aspect=next_aspect;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ALBASTRU,albastru);
-                }
-            }
+            UpdateManevra();
         }
-
-        // AVARIE
-        if (is_avarie and !(is_bla or is_bla4i))
+        else if (is_avarie and !(is_bla or is_bla4i))
         {
-            if (active_fault)
-            {
-                this_aspect=S_ROSU_AV;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ROSU_AV,rosu);
-                    //SetSignalState(null, RED, "Avarie la trecerea la nivel");
-                }
-            }
-            else
-            {
-                this_aspect=next_aspect;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                }
-            }
+            UpdateAvarie();
         }
     }
 
@@ -2142,62 +2208,13 @@ class Semnal isclass Signal
             }
         }
 
-        // REPETITOR MEC
         if (is_repetitor)
         {
-            this_aspect=next_aspect;
-
-            if (this_aspect!=memo_aspect)
-            {
-                memo_aspect=this_aspect;
-                Notify();
-                LightsOff();
-
-                if (this_aspect==S_ROSU)
-                {
-                    SetMeshAnimationFrame("default",0,1);
-                    SetFXCoronaTexture(B_GALBEN,galben);
-                }
-                else
-                {
-                    SetMeshAnimationFrame("default",30,1);
-                    SetFXCoronaTexture(B_GALBEN,verde);
-                }
-            }
+            UpdateRepetitor();
         }
-
-        // MANEVRA
-        if (is_manevra and !(is_intrare or is_iesire or is_triere))
+        else if (is_manevra and !(is_intrare or is_iesire or is_triere))
         {
-            //Daca exista marker pentru manevra
-            FindMarker();
-
-            if (restriction == S_ALB or active_shunt)
-            {
-                this_aspect=S_ALB;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXCoronaTexture(B_ALB, alb);
-                    SetMeshAnimationFrame("default", 30, 1);
-                    SetSpeedLimit(20/3.6);
-                    //SetSignalState(null, GREEN, "Manevra permisă");
-                }
-            }
-            else
-            {
-                this_aspect=next_aspect;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXCoronaTexture(B_ALB, albastru);
-                    SetMeshAnimationFrame("default", 0, 1);
-                }
-            }
+            UpdateManevra();
         }
     }
 
@@ -3830,113 +3847,18 @@ class Semnal isclass Signal
             }
         }
 
-        // REPETITOR TMV
         if (is_repetitor)
         {
-            this_aspect=next_aspect;
-            if (this_aspect!=memo_aspect)
-            {
-                memo_aspect=this_aspect;
-                Notify();
-                LightsOff();
-
-                //rosu
-                if (this_aspect==S_ROSU)
-                {
-                    SetFXAttachment("50",albmic);
-                    SetFXAttachment("51",albmic);
-                    SetFXAttachment("52",albmic);
-                    SetFXAttachment("53",albmic);
-                    SetFXAttachment("57",albmic);
-                    SetFXAttachment("58",albmic);
-                    SetFXAttachment("59",albmic);
-                }
-
-                //galben
-                if (this_aspect==S_GALBEN or this_aspect>=S_GAL_CL and this_aspect<=T_VER_CL_100)
-                {
-                    SetFXAttachment("50",albmic);
-                    SetFXAttachment("51",albmic);
-                    SetFXAttachment("52",albmic);
-                    SetFXAttachment("53",albmic);
-                    SetFXAttachment("54",albmic);
-                    SetFXAttachment("55",albmic);
-                    SetFXAttachment("56",albmic);
-                }
-
-                //verde
-                if (this_aspect==S_VERDE or this_aspect>=T_VERDE)
-                {
-                    SetFXAttachment("50",albmic);
-                    SetFXAttachment("51",albmic);
-                    SetFXAttachment("52",albmic);
-                    SetFXAttachment("53",albmic);
-                    SetFXAttachment("60",albmic);
-                    SetFXAttachment("61",albmic);
-                    SetFXAttachment("62",albmic);
-                }
-            }
+           UpdateRepetitor();
         }
-
-        // MANEVRA
-        if (is_manevra and !(is_intrare or is_iesire or is_triere))
+        else if (is_manevra and !(is_intrare or is_iesire or is_triere))
         {
-            //Daca exista marker pentru manevra
-            FindMarker();
-
-            if (restriction == S_ALB or active_shunt)
-            {
-                this_aspect=S_ALB;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ALB, alb);
-                    SetSpeedLimit(20/3.6);
-                    //SetSignalState(null, GREEN, "Manevra permisă");
-                }
-            }
-            else
-            {
-                this_aspect=next_aspect;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ALBASTRU,albastru);
-                }
-            }
+            UpdateManevra();
         }
-
-        // AVARIE
-        if (is_avarie and !is_bla)
+        else if (is_avarie and !is_bla)
         {
-            if (active_fault)
-            {
-                this_aspect=S_ROSU_AV;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                    SetFXAttachment(B_ROSU_AV,rosu);
-                    //SetSignalState(null, RED, "Avarie la trecerea la nivel");
-                }
-            }
-            else
-            {
-                this_aspect=next_aspect;
-                if (this_aspect!=memo_aspect)
-                {
-                    memo_aspect=this_aspect;
-                    Notify();
-                    LightsOff();
-                }
-            }
+            UpdateAvarie();
         }
-        //SetFXNameText("name1", next_aspect + "," + this_aspect);
     }
 
     //
@@ -4030,19 +3952,22 @@ class Semnal isclass Signal
                     //Interface.Log("SIG-RO-CFR-DBG> Setat pe AUTOMAT");
                     //SetSignalState(null, AUTOMATIC, "");
                     //Sleep(1.0);
-                    active_shunt = false;
-                    active_fault = false;
-                    active_chemare = false;
+                    //active_shunt = false;
+                    //active_fault = false;
+                    //active_chemare = false;
                     special_restrict = false;
                 }
-                else if (Str.ToInt(tok[1]) == S_ALB)
-                    active_shunt = true;
-                else if (Str.ToInt(tok[1]) == S_ALB_CL)
-                    active_chemare = true;
-                else if (Str.ToInt(tok[1]) == S_ROSU_AV)
-                    active_fault = true;
+                // else if (Str.ToInt(tok[1]) == S_ALB)
+                //     active_shunt = true;
+                // else if (Str.ToInt(tok[1]) == S_ALB_CL)
+                //     active_chemare = true;
+                // else if (Str.ToInt(tok[1]) == S_ROSU_AV)
+                //     active_fault = true;
+                else
+                {
+                    special_restrict = true;
+                }
 
-                special_restrict = true;
                 this_aspect = Str.ToInt(tok[1]);
 
                 UpdateAspect();
