@@ -764,7 +764,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR-ERR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Else clause!");
                 }
             }
             if (is_manevra)
@@ -791,7 +791,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR-ERR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Else clause!");
                 }
             }
         }
@@ -849,7 +849,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR-ERR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Else clause!");
                 }
             }
             if (is_bla or is_bla4i)
@@ -929,7 +929,7 @@ class Semnal isclass Signal
                 }
                 else
                 {
-                    Exception("SIG-RO-CFR-ERR> Else clause!");
+                    Exception("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Else clause!");
                 }
             }
             if (is_bla)
@@ -974,7 +974,7 @@ class Semnal isclass Signal
         }
         else
         {
-            Exception("SIG-RO-CFR-ERR> Unknown signal_type: " + signal_type);
+            Exception("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : Unknown signal_type: " + signal_type);
         }
     }
 
@@ -3885,7 +3885,7 @@ class Semnal isclass Signal
     void MessageHandler(Message msg)
     {
         if (!msg) {
-            Interface.Log("SIG-RO-CFR-ERR> MessageHandler: msg is null!");
+            Interface.Log("SIG-RO-CFR-ERR> " + GetLocalisedName() + " : MessageHandler: msg is null!");
             return;
         }
 
