@@ -31,7 +31,7 @@ class SemnalCommand isclass DriverCommand
         {
             // if the signal is of the right type and is in the right direction and is of the right type
             if (cast<Semnal>mo and GSTS.GetFacingRelativeToSearchDirection() and
-                mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsInt(signal_tag, 0) == 1)
+                mo.GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsBool(signal_tag, false))
             {
                 PostMessage(mo, "Semnal", minor_msg + "/" + aspect, 0.0);
                 if (DEBUG)
