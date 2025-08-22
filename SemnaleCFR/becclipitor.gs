@@ -43,7 +43,7 @@ class BecClipitor isclass MeshObject
 
         inherited(asset);
 
-        delay = GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsFloat("lightdelay-474195", 0);
+        delay = GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsFloat("lightdelay-474195", 0.3);
         freq = GetAsset().GetConfigSoup().GetNamedSoup("extensions").GetNamedTagAsFloat("lightfreq-474195", 0);
 
         SetMeshVisible("default", false, 0);
