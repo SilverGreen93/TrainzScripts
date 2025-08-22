@@ -670,12 +670,10 @@ class Semnal isclass Signal
     //
     // Cauta markeri
     //
-    int FindMarker(void)
+    void FindMarker(void)
     {
         GSTrackSearch GSTS = BeginTrackSearch(true);
         MapObject mo = GSTS.SearchNext();
-        //int restriction;
-
         direction = 0;
         ies_st = 0;
         if (signal_type == "TMV")
@@ -729,8 +727,6 @@ class Semnal isclass Signal
             }
             mo = GSTS.SearchNext();
         }
-
-        return restriction;
     }
 
     //
@@ -1191,7 +1187,7 @@ class Semnal isclass Signal
     //
     void UpdateManevra(void)
     {
-        restriction = FindMarker();
+        FindMarker();
 
         if (special_restrict == S_ALB or restriction == R_MANEVRA)
         {
@@ -1373,7 +1369,7 @@ class Semnal isclass Signal
         // INTRARE si IESIRE 3, 4, 5
         if ((is_intrare or is_iesire) and lights_count != 2)
         {
-            int restriction = FindMarker();
+            FindMarker();
 
             // CHEMARE
             if (is_chemare and (special_restrict == S_ALB_CL or restriction == R_CHEMARE))
@@ -2209,7 +2205,7 @@ class Semnal isclass Signal
         // INTRARE si IESIRE
         if (is_intrare or is_iesire)
         {
-            int restriction = FindMarker();
+            FindMarker();
             FindMarkerLinie();
 
             // CHEMARE
