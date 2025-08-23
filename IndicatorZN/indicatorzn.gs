@@ -10,10 +10,12 @@ include "trackside.gs"
 
 class IndicatorZN isclass Trackside
 {
+    define bool DEBUG = true;
+
     public define int S_DJ_DECON = 0; // Ü aspect
     public define int S_DJ_NU_DECON = 1; // I aspect
 
-    string indicator_type;
+    string zn_type;
     public int aspect = S_DJ_DECON;
     Asset bec;
 
@@ -23,7 +25,10 @@ class IndicatorZN isclass Trackside
     //
     public void UpdateAspect()
     {
-        if (indicator_type == "TMV")
+        if (DEBUG)
+            Interface.Log("CTRL-RO-CFR-DBG> " + GetLocalisedName() + " : Update aspect to " + aspect + " for type " + zn_type);
+
+        if (zn_type == "new")
         {
             if (aspect == S_DJ_NU_DECON)
             {
@@ -150,11 +155,18 @@ class IndicatorZN isclass Trackside
 
     public void Init(Asset asset)
     {
+        string indicator_type;
         inherited(asset);
 
         Soup extensions = GetAsset().GetConfigSoup().GetNamedSoup("extensions");
 
         indicator_type = extensions.GetNamedTag("indicator_type-474195");
+        if (indicator_type != "ZN")
+        {
+            Interface.Log("CTRL-RO-CFR-ERR> " + GetLocalisedName() + " : Invalid type: " + indicator_type);
+        }
+
+        zn_type = extensions.GetNamedTag("zn_type-474195");
         bec = GetAsset().FindAsset("bec");
 
         AddHandler(me, "Indicator", "", "MessageHandler");
